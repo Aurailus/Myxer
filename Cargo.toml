@@ -1,0 +1,28 @@
+[package]
+name = "v-mix"
+version = "0.1.0"
+authors = ["Auri <me@auri.xyz>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gdk = "0.13.2"
+glib = "0.10.3"
+once_cell = "1.6.0"
+
+[dependencies.pulse]
+version = "2.23.0"
+package = "libpulse-binding"
+
+[dependencies.pulse_glib]
+version = "2.23.0"
+package = "libpulse-glib-binding"
+
+[dependencies.gtk]
+version = "0.9.0"
+features = ["v3_16"]
+
+[dependencies.gio]
+version = ""
+features = ["v2_44"]
