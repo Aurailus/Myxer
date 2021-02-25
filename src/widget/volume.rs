@@ -6,8 +6,6 @@ use gtk::subclass::prelude::*;
 use glib::subclass;
 use glib::translate::*;
 
-use std::thread;
-
 glib::glib_wrapper! {
 	pub struct Volume(
 		Object<subclass::simple::InstanceStruct<VolumePriv>,
@@ -153,7 +151,6 @@ impl ObjectImpl for VolumePriv {
 
 		let img_ref = image.clone();
 		button.connect_clicked(move |button| {
-			println!("{:?}", thread::current().name());
 			if button.get_style_context().has_class("muted") {
 				button.get_style_context().remove_class("muted");
 				img_ref.set_from_icon_name(Some("audio-volume-low-symbolic"), gtk::IconSize::Button);

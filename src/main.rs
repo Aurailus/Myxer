@@ -3,8 +3,6 @@ extern crate glib;
 extern crate gtk;
 extern crate gio;
 
-use std::thread;
-
 mod shared;
 mod pulse;
 #[path = "./widget/volume.rs"]
@@ -52,20 +50,29 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	let mut store = PulseStore::new();
 	// app.connect_shutdown(move |_| pulse.cleanup());
 
-	gtk::timeout_add(100, move || {
-		let res = rx.try_recv();
-		if !res.is_ok() { return glib::Continue(true); }
+	glib::timeout_add_local(100, move || {
+		let mut changed = false;
+		loop {
+			let res = rx.try_recv();
+			match res {
+				Ok(res) => match res {
+					PulseTx::INPUT(index, data) => match data {
+						Some(input) => { store.inputs.insert(index, input); },
+						None => { store.inputs.remove(&index); }
+					},
+					PulseTx::SINK(index, data) => match data {
+						Some(sink) => { store.sinks.insert(index, sink); },
+						None => { store.inputs.remove(&index); }
+					},
+					PulseTx::END => changed = true
+				},
+				_ => break
+			}
+		}
 
-		match res.unwrap() {
-			PulseTx::INPUT(index, data) => match data {
-				Some(data) => { store.inputs.insert(index, data); },
-				None => { store.inputs.remove(&index); }
-			},
-			_ => ()
-		};
-
-		println!("{:?}", store);
-		
+		if changed {
+			println!("{:?}", store);
+		}
 		glib::Continue(true)
 	});
 
@@ -99,7 +106,7 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	notebook.add_tab("Playback", outer_container.upcast());
 	notebook.add_tab("Recording", gtk::Box::new(gtk::Orientation::Vertical, 0).upcast());
 
-	window.add(&notebook.notebook);
+	window.add(&notebook.widget);
 
 	window.show_all();
 }

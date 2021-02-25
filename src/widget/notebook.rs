@@ -1,14 +1,14 @@
 use gtk::prelude::*;
 
 pub struct Notebook {
-	pub notebook: gtk::Notebook,
+	pub widget: gtk::Notebook,
 	tabs: Vec<gtk::Box>
 }
 
 impl Notebook {
 	pub fn new() -> Self {
 		Notebook {
-			notebook: gtk::Notebook::new(),
+			widget: gtk::Notebook::new(),
 			tabs: Vec::new()
 		}
 	}
@@ -20,7 +20,7 @@ impl Notebook {
 		tab.pack_start(&label, false, false, 0);
 		tab.show_all();
 
-		let index = self.notebook.append_page(&widget, Some(&tab));
+		let index = self.widget.append_page(&widget, Some(&tab));
 		self.tabs.push(tab);
 		index
 	}
