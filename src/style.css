@@ -1,9 +1,19 @@
-@define-color border-color lighter(@bg_color);
+@define-color border-color @bg_color;
+
+/* Fix double border on tab layout */
+notebook {
+	border-width: 0;
+	border-top-width: 1px;
+}
 
 /* Apply a border to select elements. */
 
 .bordered {
 	border: 1px solid @border-color;
+}
+
+scrollbar {
+	border-color: @border-color;
 }
 
 /* At some point, figure out how to replace
@@ -17,12 +27,31 @@ the hardcoded values with theme colors. */
 	background-color: alpha(rgb(82, 148, 226), 1);
 }
 
+#volume {
+	padding-top: 4px;
+}
+
 /* Pad the system volume since it's not got a scrollbar.
 Value should be dynamically determined later. */
 
 #volume.system {
 	padding-bottom: 13px;
 	margin-right: 4px;
+}
+
+/* Styles for the Mute indicator button. */
+
+#volume #mute_toggle image {
+	margin-top: 1px;
+	margin-right: 4px;
+}
+
+#volume #mute_toggle.muted {
+	border-color: @bg_color;
+}
+
+#volume #mute_toggle.muted {
+	color: alpha(@fg_color, 0.4);
 }
 
 /* Hide the weird dotted lines on the
@@ -32,14 +61,11 @@ undershoot {
 	background: none;
 }
 
-scrollbar {
-	border-color: @border-color;
-}
-
 /* Button groups: Remove borders, adjust padding,
-de-emphasize non-important interactions. */
+de-emphasize non-important interactions.
+TRY USING .linked ON THE PARENT BOX BEFORE USING THIS */
 
-.button_group {
+/*.button_group {
 	margin: 0px 4px;
 }
 
@@ -67,9 +93,4 @@ de-emphasize non-important interactions. */
 	border-left: none;
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
-}
-
-button {
-	/*padding: 2px;*/
-	margin-bottom: 2px;
-}
+}*/

@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 gdk = "0.13.2"
 glib = "0.10.3"
+pango = "0.9.1"
 once_cell = "1.6.0"
 
 [dependencies.pulse]

@@ -3,27 +3,71 @@ extern crate glib;
 extern crate gtk;
 extern crate gio;
 
+use std::thread;
+
+mod shared;
+mod pulse;
+#[path = "./widget/volume.rs"]
+mod volume;
+#[path = "./widget/notebook.rs"]
+mod notebook;
+
+use shared::Shared;
+use std::sync::mpsc::channel;
+
 use gtk::prelude::*;
 use gio::prelude::*;
 
-use pulse::mainloop::threaded::Mainloop;
-use pulse::context::{ Context, FlagSet };
-use pulse::proplist::Proplist;
-// use pulse::mainloop::api::Mainloop as MainloopTrait;
-
-#[path = "./widget/volume.rs"]
-mod volume;
 use volume::Volume;
 use volume::VolumeExt;
-mod shared;
-use shared::Shared;
+use notebook::Notebook;
+use crate::pulse::{ PulseController, PulseStore, PulseTx };
 
-fn build_ui(app: &gtk::Application) {
+fn main() {
+	let pulse = Shared::new(PulseController::new());
+	pulse.borrow_mut().connect();
+
+	let app = gtk::Application::new(Some("com.aurailus.vmix"), Default::default())
+		.expect("Failed to initialize GTK application.");
+		
+	let pulse_shr = pulse.clone();
+	app.connect_activate(move |app| activate(app, pulse_shr.clone()));
+	app.run(&[]);
+
+	pulse.borrow_mut().cleanup();
+}
+
+fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	let window = gtk::ApplicationWindow::new(app);
 	window.set_title("VMix");
 	window.set_resizable(false);
-	window.set_default_size(500, 300);
-	window.set_border_width(4);
+	window.set_default_size(490, 320);
+	window.set_border_width(0);
+	
+	let (tx, rx) = channel::<PulseTx>();
+	let mut pulse = pulse_shr.borrow_mut();
+	pulse.subscribe(tx);
+
+
+	let mut store = PulseStore::new();
+	// app.connect_shutdown(move |_| pulse.cleanup());
+
+	gtk::timeout_add(100, move || {
+		let res = rx.try_recv();
+		if !res.is_ok() { return glib::Continue(true); }
+
+		match res.unwrap() {
+			PulseTx::INPUT(index, data) => match data {
+				Some(data) => { store.inputs.insert(index, data); },
+				None => { store.inputs.remove(&index); }
+			},
+			_ => ()
+		};
+
+		println!("{:?}", store);
+		
+		glib::Continue(true)
+	});
 
 	let style = include_str!("./style.css");
 	let provider = gtk::CssProvider::new();
@@ -32,6 +76,7 @@ fn build_ui(app: &gtk::Application) {
 		&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
 	let outer_container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	outer_container.set_border_width(4);
 	let system_volume = Volume::new();
 	system_volume.set_system();
 	system_volume.get_style_context().add_class("bordered");
@@ -49,92 +94,12 @@ fn build_ui(app: &gtk::Application) {
 	inner_container.pack_start(&volume_widget, false, false, 0);
 	let volume_widget = Volume::new();
 	inner_container.pack_start(&volume_widget, false, false, 0);
-	let volume_widget = Volume::new();
-	inner_container.pack_start(&volume_widget, false, false, 0);
-	let volume_widget = Volume::new();
-	inner_container.pack_start(&volume_widget, false, false, 0);
-	let volume_widget = Volume::new();
-	inner_container.pack_start(&volume_widget, false, false, 0);
-	let volume_widget = Volume::new();
-	inner_container.pack_start(&volume_widget, false, false, 0);
-	let volume_widget = Volume::new();
-	inner_container.pack_start(&volume_widget, false, false, 0);
-	let volume_widget = Volume::new();
-	inner_container.pack_start(&volume_widget, false, false, 0);
 
-	window.add(&outer_container);
+	let mut notebook = Notebook::new();
+	notebook.add_tab("Playback", outer_container.upcast());
+	notebook.add_tab("Recording", gtk::Box::new(gtk::Orientation::Vertical, 0).upcast());
+
+	window.add(&notebook.notebook);
+
 	window.show_all();
-}
-
-fn main() {
-	let mut proplist = Proplist::new().unwrap();
-	proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "VMix")
-		.expect("Failed to set Pulse application name.");
-
-	let mainloop = Shared::new(Mainloop::new()
-		.expect("Failed to initialize Pulse mainloop."));
-
-	let context = Shared::new(
-		Context::new_with_proplist(&*mainloop.borrow(), "VMix Context", &proplist)
-		.expect("Failed to create Pulse context."));
-
-	/* Pass forward relevant states to the loop below. */ {
-		let mainloop_ref = mainloop.clone();
-		let context_ref = context.clone();
-		context.borrow_mut().set_state_callback(Some(Box::new(move || {
-			match unsafe { (*context_ref.as_ptr()).get_state() } {
-				pulse::context::State::Ready |
-				pulse::context::State::Failed |
-				pulse::context::State::Terminated => {
-					unsafe { (*mainloop_ref.as_ptr()).signal(false); }
-				},
-				_ => {},
-			}
-		})));
-	}
-
-	context.borrow_mut().connect(None, FlagSet::NOFLAGS, None)
-		.expect("Failed to connect context");
-
-	mainloop.borrow_mut().lock();
-	mainloop.borrow_mut().start().expect("Failed to start mainloop");
-
-	/* Wait for a valid state to be passed forward */
-	loop {
-		let mut ctx = context.borrow_mut();
-		match ctx.get_state() {
-			pulse::context::State::Ready => {
-				ctx.set_state_callback(None);
-				break;
-			},
-			pulse::context::State::Failed |
-			pulse::context::State::Terminated => {
-				eprintln!("Context state failed/terminated, quitting...");
-				mainloop.borrow_mut().unlock();
-				mainloop.borrow_mut().stop();
-				return;
-			},
-			_ => { mainloop.borrow_mut().wait(); },
-		}
-	}
-
-	context.borrow_mut().set_event_callback(Some(Box::new(|event, _o| {
-		println!("Other!");
-		println!("{}", event);
-	})));
-
-	context.borrow_mut().introspect().get_client_info_list(|info| {
-		println!("Callback!");
-		println!("{:?}", info);
-	});
-
-	let app = gtk::Application::new(Some("com.aurailus.vmix"), Default::default())
-		.expect("Failed to initialize GTK application.");
-
-	app.connect_activate(|app| build_ui(app));
-
-	app.run(&[]);
-
-	mainloop.borrow_mut().unlock();
-	mainloop.borrow_mut().stop();
 }

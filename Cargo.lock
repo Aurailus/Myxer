@@ -697,6 +697,7 @@ dependencies = [
  "libpulse-binding",
  "libpulse-glib-binding",
  "once_cell",
+ "pango",
 ]
 
 [[package]]
