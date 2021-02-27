@@ -19,38 +19,42 @@ scrollbar {
 /* At some point, figure out how to replace
 the hardcoded values with theme colors. */
 
-#volume scale trough highlight {
+#meter scale trough highlight {
 	background-color: alpha(rgb(82, 148, 226), 0.4);
 }
 
-#volume scale trough fill {
+#meter scale trough fill {
 	background-color: alpha(rgb(82, 148, 226), 1);
 }
 
-#volume {
+#meter {
 	padding-top: 4px;
 }
 
 /* Pad the system volume since it's not got a scrollbar.
 Value should be dynamically determined later. */
 
-#volume.system {
-	padding-bottom: 13px;
+#meter.outer {
+	/*padding-bottom: 13px;*/
 	margin-right: 4px;
+}
+
+#meter #app_label {
+	padding: 0 4px;
 }
 
 /* Styles for the Mute indicator button. */
 
-#volume #mute_toggle image {
+#meter #mute_toggle image {
 	margin-top: 1px;
 	margin-right: 4px;
 }
 
-#volume #mute_toggle.muted {
+#meter #mute_toggle.muted {
 	border-color: @bg_color;
 }
 
-#volume #mute_toggle.muted {
+#meter #mute_toggle.muted {
 	color: alpha(@fg_color, 0.4);
 }
 
