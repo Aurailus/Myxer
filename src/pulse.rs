@@ -17,13 +17,13 @@ use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
 pub enum TxMessage {
 	SinkUpdate(SinkData),
 	SinkRemove(u32),
-	// SinkPeak(u32, usize),
 
 	SinkInputUpdate(SinkInputData),
-	SinkInputRemove(u32),
-	// SinkInputPeak(u32, usize),
+	SinkInputRemove(u32)
 }
 
+#[derive(Debug)]
+#[derive(Clone)]
 pub struct SinkInputData {
 	pub index: u32,
 	pub sink: u32,
@@ -31,9 +31,13 @@ pub struct SinkInputData {
 	pub icon: String,
 	pub muted: bool,
 	pub volume: pulse::volume::Volume,
+}
 
-	pub peak_volume: u32,
-	pub peak_stream: Option<Shared<Stream>>
+pub struct SinkInput {
+	pub data: SinkInputData,
+
+	pub peak: u32,
+	pub monitor: Shared<Stream>
 }
 
 #[derive(Debug)]
@@ -43,6 +47,13 @@ pub struct SinkData {
 	pub port_name: String,
 	pub muted: bool,
 	pub volume: pulse::volume::Volume
+}
+
+pub struct Sink {
+	pub data: SinkData,
+
+	pub peak: u32,
+	pub monitor: Shared<Stream>
 }
 
 struct Channel<T> {
@@ -55,8 +66,8 @@ pub struct PulseController {
 	context: Shared<Context>,
 	channel: Channel<TxMessage>,
 
-	pub sinks: HashMap<u32, SinkData>,
-	pub sink_inputs: HashMap<u32, SinkInputData>,
+	pub sinks: HashMap<u32, Sink>,
+	pub sink_inputs: HashMap<u32, SinkInput>,
 }
 
 impl PulseController {
@@ -130,13 +141,11 @@ impl PulseController {
 	pub fn subscribe(&mut self) {
 		fn tx_sink(tx: &Sender<TxMessage>, result: ListResult<&SinkInfo<'_>>) {
 			if let ListResult::Item(item) = result {
-				// println!("{}", item.name.as_ref().unwrap());
 				tx.send(TxMessage::SinkUpdate(SinkData {
 					index: item.index,
 					name: item.description.clone().unwrap().into_owned(),
 					port_name: item.active_port.as_ref().unwrap().description.clone().unwrap().into_owned(),
-					volume: item.volume.avg(),
-					muted: item.mute
+					volume: item.volume.avg(), muted: item.mute
 				})).unwrap();
 			};
 		};
@@ -144,14 +153,10 @@ impl PulseController {
 		fn tx_sink_input(tx: &Sender<TxMessage>, result: ListResult<&SinkInputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				tx.send(TxMessage::SinkInputUpdate(SinkInputData {
-					index: item.index,
-					sink: item.sink,
+					index: item.index, sink: item.sink,
 					name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
 					icon: item.proplist.get_str("application.icon_name").unwrap_or("audio-card".to_owned()),
-					volume: item.volume.avg(),
-					muted: item.mute,
-					peak_volume: 0,
-					peak_stream: None
+					volume: item.volume.avg(), muted: item.mute
 				})).unwrap();
 			};
 		};
@@ -211,24 +216,34 @@ impl PulseController {
 		}
 
 		for (_, input) in self.sink_inputs.iter_mut() {
-			if input.peak_stream.is_some() && input.peak_stream.as_ref().unwrap().borrow_mut().readable_size().is_some() {
-				let mut stream = input.peak_stream.as_ref().unwrap().borrow_mut();
-
-				loop {
-					match stream.peek().unwrap() {
-						PeekResult::Hole(_) => stream.discard().unwrap(),
-						PeekResult::Data(b) => {
-							let buf = slice_as_array!(b, [u8; 4]).expect("Bad length.");
-							let peak = f32::from_le_bytes(*buf);
-							input.peak_volume = (peak * 150.0).round() as u32;
-							stream.discard().unwrap();
-						},
-						_ => break
-					}
+			let mut stream = input.monitor.borrow_mut();
+			while stream.readable_size().is_some() {
+				match stream.peek().unwrap() {
+					PeekResult::Hole(_) => stream.discard().unwrap(),
+					PeekResult::Data(b) => {
+						let buf = slice_as_array!(b, [u8; 4]).expect("Bad length.");
+						let peak = f32::from_le_bytes(*buf);
+						input.peak = (peak * 150.0).round() as u32;
+						stream.discard().unwrap();
+					},
+					_ => break
 				}
+			}
+		}
 
-				// println!("{:?}", stream.peek());
-				// stream.discard().unwrap();
+		for (_, sink) in self.sinks.iter_mut() {
+			let mut stream = sink.monitor.borrow_mut();
+			while stream.readable_size().is_some() {
+				match stream.peek().unwrap() {
+					PeekResult::Hole(_) => stream.discard().unwrap(),
+					PeekResult::Data(b) => {
+						let buf = slice_as_array!(b, [u8; 4]).expect("Bad length.");
+						let peak = f32::from_le_bytes(*buf);
+						sink.peak = (peak * 150.0).round() as u32;
+						stream.discard().unwrap();
+					},
+					_ => break
+				}
 			}
 		}
 
@@ -242,47 +257,62 @@ impl PulseController {
 	// 	mainloop.stop();
 	// }
 
-	fn sink_updated(&mut self, sink: SinkData) {
-		self.sinks.insert(sink.index, sink);
+	fn sink_updated(&mut self, data: SinkData) {
+		let index = data.index;
+
+		let entry = self.sinks.get_mut(&index);
+		if entry.is_some() { entry.unwrap().data = data; }
+		else {
+			let stream = self.create_source_monitor(index, u32::MAX);
+			self.sinks.insert(index, Sink {
+				data, peak: 0, monitor: stream });
+		}
 	}
 
 	fn sink_removed(&mut self, index: u32) {
 		self.sinks.remove(&index);
 	}
 
-	fn sink_input_updated(&mut self, mut input: SinkInputData) {
-		let index = input.index;
+	fn sink_input_updated(&mut self, data: SinkInputData) {
+		let index = data.index;
+		let sink = data.sink;
 
-		if !self.sink_inputs.contains_key(&index) {
-			println!("Registering monitor for {}", index);
-			let mut attr = BufferAttr::default();
-			attr.fragsize = 4;
-			attr.maxlength = u32::MAX;
-			
-			let spec = Spec { channels: 1, format: Format::F32le, rate: 25 };
-			assert!(spec.is_valid());
-			
-			let s = Shared::new(Stream::new(&mut self.context.borrow_mut(), "VMix Peak Detect", &spec, None).unwrap());
-			{
-				let mut stream = s.borrow_mut();
-				
-				stream.set_monitor_stream(index).unwrap();
-
-				// let ss = s.clone();
-				// let tx = self.channel.tx.clone();
-				// stream.set_suspended_callback(Some(Box::new(|| println!("Suspended?"))));
-				// stream.set_read_callback(Some(Box::new(move |peak| tx.send(TxMessage::SinkInputPeak(index, peak)).unwrap())));
-
-				stream.connect_record(None, Some(&attr),
-					StreamFlagSet::DONT_MOVE | StreamFlagSet::ADJUST_LATENCY | StreamFlagSet::PEAK_DETECT).unwrap();
-				// stream.set_state_callback(Some(Box::new(move || println!("{:?}", ss.borrow_mut().get_state()))));
-			}
-			input.peak_stream = Some(s.clone());
+		let entry = self.sink_inputs.get_mut(&index);
+		if entry.is_some() { entry.unwrap().data = data; }
+		else {
+			let stream = self.create_source_monitor(sink, index);
+			self.sink_inputs.insert(index, SinkInput {
+				data, peak: 0, monitor: stream });
 		}
-		self.sink_inputs.insert(index, input);
 	}
 
 	fn sink_input_removed(&mut self, index: u32) {
 		self.sink_inputs.remove(&index);
+	}
+
+	fn create_source_monitor(&mut self, _source_index: u32, stream_index: u32) -> Shared<Stream> {
+		// TODO: Source index *must* be needed somewhere.
+		// I think it's just happening to choose the right source when i input None below.
+		
+		let mut attr = BufferAttr::default();
+		attr.fragsize = 4;
+		attr.maxlength = u32::MAX;
+		
+		let spec = Spec { channels: 1, format: Format::F32le, rate: 25 };
+		assert!(spec.is_valid());
+		
+		let s = Shared::new(Stream::new(&mut self.context.borrow_mut(), "VMix Peak Detect", &spec, None).unwrap());
+		{
+			let mut stream = s.borrow_mut();
+			if stream_index != u32::MAX { stream.set_monitor_stream(stream_index).unwrap(); }
+
+			stream.connect_record(None, Some(&attr),
+				StreamFlagSet::DONT_MOVE | StreamFlagSet::ADJUST_LATENCY | StreamFlagSet::PEAK_DETECT).unwrap();
+
+			let ss = s.clone();
+			stream.set_state_callback(Some(Box::new(move || println!("{:?}", ss.borrow_mut().get_state()))));
+		}
+
+		return s;
 	}
 }

@@ -96,18 +96,19 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 			let sink_opt = pulse.sinks.iter().next();
 			if sink_opt.is_some() {
 				let sink = sink_opt.unwrap().1;
-				sink_meter.set_name_and_icon(sink.name.as_str(), "audio-headphones");
-				sink_meter.set_volume(sink.volume.0);
-				sink_meter.set_muted(sink.muted);
+				sink_meter.set_name_and_icon(sink.data.name.as_str(), "audio-headphones");
+				sink_meter.set_volume(sink.data.volume.0);
+				sink_meter.set_muted(sink.data.muted);
+				sink_meter.set_peak_volume(sink.peak);
 			}
 
 			let mut meters = meters.borrow_mut();
 			for (index, input) in pulse.sink_inputs.iter() {
 				let meter = meters.entry(*index).or_insert(SinkMeter::new());
-				meter.set_name_and_icon(input.name.as_str(), input.icon.as_str());
-				meter.set_volume(input.volume.0);
-				meter.set_muted(input.muted);
-				meter.set_peak_volume(input.peak_volume);
+				meter.set_name_and_icon(input.data.name.as_str(), input.data.icon.as_str());
+				meter.set_volume(input.data.volume.0);
+				meter.set_muted(input.data.muted);
+				meter.set_peak_volume(input.peak);
 
 				if meter.widget.get_parent().is_none() {
 					inner_container.pack_start(&meter.widget, false, false, 0);

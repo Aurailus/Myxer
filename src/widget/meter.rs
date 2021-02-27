@@ -132,7 +132,7 @@ impl SinkMeter {
 		let peak_scaled = (self.peak as f64 * vol_scaled as f64 / 150.0) as u8;
 		// self.widgets.label.set_sensitive(!self.muted);
 
-		println!("{:?}", self.peak);
+		// println!("{:?}", self.peak);
 
 		self.widgets.scale.set_sensitive(!self.muted);
 		self.widgets.scale.set_value(vol_scaled.into());
