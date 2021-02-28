@@ -1,13 +1,15 @@
 use gtk;
 use gtk::prelude::*;
 
-const MAX_NATURAL_VOL: f64 = 65536.0;
+const MAX_NATURAL_VOL: u32 = 65536;
+const MAX_SCALE_VOL: u32 = (MAX_NATURAL_VOL as f64 * 1.5) as u32;
+const SCALE_STEP: f64 = MAX_NATURAL_VOL as f64 / 20.0;
 
-struct Widgets {
+pub struct Widgets {
 	root: gtk::Box,
 	icon: gtk::Image,
 	label: gtk::Label,
-	scale: gtk::Scale,
+	pub scale: gtk::Scale,
 	status: gtk::Button,
 	status_icon: gtk::Image
 }
@@ -35,20 +37,20 @@ fn build_widget() -> Widgets {
 	label.set_line_wrap(true);
 	label.set_lines(2);
 
-	let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, 150.0, 5.0);
+	let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, MAX_SCALE_VOL as f64, SCALE_STEP);
 	root.pack_start(&scale, true, true, 2);
 
 	scale.set_inverted(true);
 	scale.set_draw_value(false);
-	scale.set_increments(5.0, 5.0);
+	scale.set_increments(SCALE_STEP, SCALE_STEP);
 
 	scale.set_fill_level(0.0);
 	scale.set_show_fill_level(true);
 	scale.set_restrict_to_fill_level(false);
 
 	scale.add_mark(0.0, gtk::PositionType::Right, Some(""));
-	scale.add_mark(100.0, gtk::PositionType::Right, Some(""));
-	scale.add_mark(150.0, gtk::PositionType::Right, Some(""));
+	scale.add_mark(MAX_SCALE_VOL as f64, gtk::PositionType::Right, Some(""));
+	scale.add_mark(MAX_NATURAL_VOL as f64, gtk::PositionType::Right, Some(""));
 
 	let status_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 	root.pack_start(&status_box, false, false, 4);
@@ -84,7 +86,7 @@ pub trait Meter {
 
 pub struct StreamMeter {
 	pub widget: gtk::Box,
-	widgets: Widgets,
+	pub widgets: Widgets,
 	volume: u32,
 	peak: u32,
 	muted: bool
@@ -103,24 +105,21 @@ impl Meter for StreamMeter {
 	}
 
 	fn refresh(&mut self) {
-		let mut vol_scaled = ((self.volume as f64) / MAX_NATURAL_VOL * 100.0).round() as u8;
-		if vol_scaled > 150 { vol_scaled = 150 }
-
-		let peak_scaled = (self.peak as f64 * vol_scaled as f64 / 150.0) as u8;
-		// self.widgets.label.set_sensitive(!self.muted);
-		// println!("{:?}", self.peak);
+		let peak_scaled = self.peak as f64 * (self.volume as f64 / MAX_SCALE_VOL as f64);
 
 		self.widgets.scale.set_sensitive(!self.muted);
-		self.widgets.scale.set_value(vol_scaled.into());
-		self.widgets.scale.set_show_fill_level(!self.muted && peak_scaled > 0);
-		self.widgets.scale.set_fill_level(peak_scaled.into());
+		self.widgets.scale.set_value(self.volume as f64);
+		self.widgets.scale.set_fill_level(peak_scaled as f64);
+		self.widgets.scale.set_show_fill_level(!self.muted && peak_scaled > 0.5);
 
 		self.widgets.status_icon.set_from_icon_name(Some(
 			if self.muted { "action-unavailable-symbolic" }
-			else if vol_scaled >= 100 { "audio-volume-high-symbolic" }
-			else if vol_scaled >= 10 { "audio-volume-medium-symbolic" }
+			else if self.volume >= MAX_NATURAL_VOL { "audio-volume-high-symbolic" }
+			else if self.volume >= MAX_NATURAL_VOL / 2 { "audio-volume-medium-symbolic" }
 			else { "audio-volume-low-symbolic" }), gtk::IconSize::Button);
 
+		let mut vol_scaled = ((self.volume as f64) / MAX_NATURAL_VOL as f64 * 100.0).round() as u8;
+		if vol_scaled > 150 { vol_scaled = 150 }
 
 		let mut string = vol_scaled.to_string();
 		string.push_str("%");

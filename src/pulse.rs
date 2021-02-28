@@ -12,8 +12,8 @@ use pulse::def::{ BufferAttr };
 use pulse::callbacks::ListResult;
 use pulse::sample::{ Spec, Format };
 use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
-use pulse::context::introspect::{ SinkInfo, SinkInputInfo, SourceOutputInfo };
 use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
+use pulse::context::introspect::{ SinkInfo, SinkInputInfo, SourceOutputInfo };
 
 pub enum TxMessage {
 	SinkUpdate(SinkData),
@@ -282,7 +282,7 @@ impl PulseController {
 					_ => break
 				}
 			}
-			let peak = (raw_peak.sqrt() * 150.0).round() as u32;
+			let peak = (raw_peak.sqrt() * 65535.0 * 1.5).round() as u32;
 			tx.send(TxMessage::Peak(index, peak)).unwrap();
 		}
 

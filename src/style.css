@@ -1,5 +1,35 @@
 @define-color border-color @bg_color;
 
+.title {
+	padding-left: 4px;
+}
+
+window {
+	background-color: #404552;
+}
+
+headerbar box:last-child {
+	padding-left: 0;
+}
+
+headerbar button#preferences.image-button {
+	border-radius: 50%;
+	margin-right: -6px;
+	padding: 0px;
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+headerbar #preferences image {
+	opacity: .7;
+}
+
+
+headerbar box:last-child separator {
+	border-width: 0;
+	border-image-source: none;
+}
+
 /* Fix double border on tab layout */
 notebook {
 	border-width: 0;

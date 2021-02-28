@@ -20,6 +20,7 @@ impl Notebook {
 		tab.pack_start(&label, false, false, 0);
 		tab.show_all();
 
+		self.widget.set_show_tabs(false);
 		let index = self.widget.append_page(&widget, Some(&tab));
 		self.tabs.push(tab);
 		index
