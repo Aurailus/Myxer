@@ -17,9 +17,38 @@ use shared::Shared;
 use gtk::prelude::*;
 use gio::prelude::*;
 
-// use notebook::Notebook;
 use meter::{ Meter, StreamMeter };
 use crate::pulse::{ PulseController };
+
+struct Meters {
+	pub sink: StreamMeter,
+	pub sink_inputs: HashMap<u32, StreamMeter>,
+	pub sink_inputs_box: gtk::Box,
+	
+	pub source: StreamMeter,
+	pub source_outputs: HashMap<u32, StreamMeter>,
+	pub source_outputs_box: gtk::Box
+}
+
+impl Meters {
+	pub fn new() -> Self {
+		let mut sink = StreamMeter::new();
+		sink.widget.get_style_context().add_class("outer");
+		sink.widget.get_style_context().add_class("bordered");
+
+		let source = StreamMeter::new();
+		source.widget.get_style_context().add_class("outer");
+		source.widget.get_style_context().add_class("bordered");
+
+		Meters {
+			sink, source,
+			sink_inputs: HashMap::new(),
+			sink_inputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
+			source_outputs: HashMap::new(),
+			source_outputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0)
+		}
+	}
+}
 
 fn main() {
 	let pulse = Shared::new(PulseController::new());
@@ -36,6 +65,9 @@ fn main() {
 }
 
 fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
+	
+	// Window & Header
+
 	let window = gtk::ApplicationWindow::new(app);
 	window.set_title("Volume Mixer");
 	window.set_border_width(0);
@@ -49,11 +81,9 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 
 	let header = gtk::HeaderBar::new();
 	header.set_show_close_button(true);
-	// header.set_title(Some("Volume Mixer"));
 
 	let title = gtk::Label::new(Some("Volume Mixer"));
 	title.get_style_context().add_class("title");
-	// header.set_custom_title(Some(&title));
 	header.pack_start(&title);
 	header.set_decoration_layout(Some("icon:minimize,close"));
 
@@ -73,12 +103,12 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 
 	window.set_titlebar(Some(&header));
 
+	// Setup Pulse
+
 	{
 		let mut pulse = pulse_shr.borrow_mut();
 		pulse.subscribe();
 	}
-
-	// app.connect_shutdown(move |_| pulse.cleanup());
 
 	// Include styles
 
@@ -88,122 +118,128 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK css provider."),
 		&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-	let playback = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	playback.set_border_width(4);
 
-	let mut sink_meter = StreamMeter::new();
-	sink_meter.widget.get_style_context().add_class("outer");
-	sink_meter.widget.get_style_context().add_class("bordered");
-	playback.pack_start(&sink_meter.widget, false, false, 0);
+	// Add Meters & Elements
+
+	let meters = Shared::new(Meters::new());
+
+	let playback = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	playback.pack_start(&meters.borrow().sink.widget, false, false, 0);
+	playback.set_border_width(4);
 
 	let playback_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
 	playback_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
 	playback_scroller.get_style_context().add_class("bordered");
 	playback.pack_start(&playback_scroller, true, true, 0);
-
-	let playback_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	playback_scroller.add(&playback_inner_box);
+	playback_scroller.add(&meters.borrow().sink_inputs_box);
 
 	let recording = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	recording.pack_start(&meters.borrow().source.widget, false, false, 0);
 	recording.set_border_width(4);
-
-	let source_meter = StreamMeter::new();
-	source_meter.widget.get_style_context().add_class("outer");
-	source_meter.widget.get_style_context().add_class("bordered");
-	recording.pack_start(&source_meter.widget, false, false, 0);
 
 	let recording_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
 	recording_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
 	recording_scroller.get_style_context().add_class("bordered");
 	recording.pack_start(&recording_scroller, true, true, 0);
-
-	let recording_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	recording_scroller.add(&recording_inner_box);
+	recording_scroller.add(&meters.borrow().source_outputs_box);
 
 	let mut system_meter = StreamMeter::new();
 	system_meter.set_name_and_icon("System Sounds", "multimedia-volume-control");
 	system_meter.set_volume(65535);
-	playback_inner_box.pack_start(&system_meter.widget, false, false, 0);
+	meters.borrow().sink_inputs_box.pack_start(&system_meter.widget, false, false, 0);
 
-	let sink_meters: Shared<HashMap<u32, StreamMeter>> = Shared::new(HashMap::new());
-	let source_meters: Shared<HashMap<u32, StreamMeter>> = Shared::new(HashMap::new());
-	
 	glib::timeout_add_local(1000 / 30, move || {
-		let mut pulse = pulse_shr.borrow_mut();
-		if pulse.update() {
-			let sink_opt = pulse.sinks.iter().next();
-			if sink_opt.is_some() {
-				let sink = sink_opt.unwrap().1;
-				sink_meter.set_name_and_icon(sink.data.description.as_str(), "audio-headphones");
-				sink_meter.set_volume(sink.data.volume.0);
-				sink_meter.set_muted(sink.data.muted);
-				sink_meter.set_peak_volume(sink.peak);
-				sink_meter.refresh();
-			}
-
-			let mut meters = sink_meters.borrow_mut();
-			for (index, input) in pulse.sink_inputs.iter() {
-				let meter = meters.entry(*index).or_insert({
-					let s = StreamMeter::new();
-					s.widgets.scale.connect_change_value(|_, _, value| {
-						println!("Hello! {}", value);
-						gtk::Inhibit(false)
-					});
-					s
-				});
-				meter.set_name_and_icon(input.data.name.as_str(), input.data.icon.as_str());
-				meter.set_volume(input.data.volume.0);
-				meter.set_muted(input.data.muted);
-				meter.set_peak_volume(input.peak);
-				meter.refresh();
-
-				if meter.widget.get_parent().is_none() {
-					playback_inner_box.pack_start(&meter.widget, false, false, 0);
-				}
-			}
-
-			meters.retain(|index, meter| {
-				let keep = pulse.sink_inputs.contains_key(index);
-				if !keep { playback_inner_box.remove(&meter.widget); }
-				keep
-			});
-
-			let mut meters = source_meters.borrow_mut();
-			for (index, output) in pulse.source_outputs.iter() {
-				let meter = meters.entry(*index).or_insert(StreamMeter::new());
-				meter.set_name_and_icon(output.data.name.as_str(), output.data.icon.as_str());
-				meter.set_volume(output.data.volume.0);
-				meter.set_muted(output.data.muted);
-				meter.set_peak_volume(output.peak);
-				meter.refresh();
-
-				if meter.widget.get_parent().is_none() {
-					recording_inner_box.pack_start(&meter.widget, false, false, 0);
-				}
-			}
-
-			meters.retain(|index, meter| {
-				let keep = pulse.source_outputs.contains_key(index);
-				if !keep { recording_inner_box.remove(&meter.widget); }
-				keep
-			});
-
-			playback_inner_box.show_all();
-			recording_inner_box.show_all();
-		}
-
+		let meters_shr = meters.clone();
+		let pulse_shr = pulse_shr.clone();
+		update(pulse_shr, meters_shr);
 		glib::Continue(true)
 	});
 
 	// let mut notebook = Notebook::new();
 	// notebook.add_tab("Playback", playback.upcast());
 	// notebook.add_tab("Recording", recording.upcast());
-	stack.add_titled(&playback, "playback", "Playback");
-	stack.add_titled(&recording, "recording", "Recording");
+	stack.add_titled(&playback, "playback", "Output");
+	stack.add_titled(&recording, "recording", "Input");
 
 	window.add(&stack);
 
 	// window.add(&notebook.widget);
 
 	window.show_all();
+}
+
+fn update(pulse_shr: Shared<PulseController>, meters_shr: Shared<Meters>) {
+
+	if pulse_shr.borrow_mut().update() {
+		let pulse = pulse_shr.borrow();
+		let mut meters = meters_shr.borrow_mut();
+
+		let sink_opt = pulse.sinks.iter().next();
+		if sink_opt.is_some() {
+			let sink = sink_opt.unwrap().1;
+			meters.sink.set_name_and_icon(sink.data.description.as_str(), "audio-headphones");
+			meters.sink.set_volume(sink.data.volume.0);
+			meters.sink.set_muted(sink.data.muted);
+			meters.sink.set_peak_volume(sink.peak);
+			meters.sink.refresh();
+		}
+
+		for (index, input) in pulse.sink_inputs.iter() {
+			let sink_inputs_box = meters.sink_inputs_box.clone();
+			let pulse_shr = pulse_shr.clone();
+
+			let meter = meters.sink_inputs.entry(*index).or_insert({
+				let s = StreamMeter::new();
+				let index: u32 = *index;
+				s.widgets.scale.connect_change_value(move |_, _, value| {
+					let pulse = pulse_shr.borrow_mut();
+					pulse.set_sink_input_volume(index, value as u32);
+					gtk::Inhibit(false)
+				});
+				s
+			});
+
+			meter.set_name_and_icon(input.data.name.as_str(), input.data.icon.as_str());
+			meter.set_volume(input.data.volume.0);
+			meter.set_muted(input.data.muted);
+			meter.set_peak_volume(input.peak);
+			meter.refresh();
+			
+			if meter.widget.get_parent().is_none() {
+				sink_inputs_box.pack_start(&meter.widget, false, false, 0);
+			}
+		}
+
+		let sink_inputs_box = meters.sink_inputs_box.clone();
+		meters.sink_inputs.retain(|index, meter| {
+			let keep = pulse.sink_inputs.contains_key(index);
+			if !keep { sink_inputs_box.remove(&meter.widget); }
+			keep
+		});
+
+		for (index, output) in pulse.source_outputs.iter() {
+			let source_outputs_box = meters.source_outputs_box.clone();
+			
+			let meter = meters.source_outputs.entry(*index).or_insert(StreamMeter::new());
+			meter.set_name_and_icon(output.data.name.as_str(), output.data.icon.as_str());
+			meter.set_volume(output.data.volume.0);
+			meter.set_muted(output.data.muted);
+			meter.set_peak_volume(output.peak);
+			meter.refresh();
+
+			if meter.widget.get_parent().is_none() {
+				source_outputs_box.pack_start(&meter.widget, false, false, 0);
+			}
+		}
+
+		let source_outputs_box = meters.source_outputs_box.clone();
+		meters.source_outputs.retain(|index, meter| {
+			let keep = pulse.source_outputs.contains_key(index);
+			if !keep { source_outputs_box.remove(&meter.widget); }
+			keep
+		});
+
+		meters.sink_inputs_box.show_all();
+		meters.source_outputs_box.show_all();
+	}
 }

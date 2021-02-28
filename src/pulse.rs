@@ -11,6 +11,7 @@ use pulse::proplist::Proplist;
 use pulse::def::{ BufferAttr };
 use pulse::callbacks::ListResult;
 use pulse::sample::{ Spec, Format };
+use pulse::volume::{ ChannelVolumes, Volume, VolumeLinear };
 use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
 use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
 use pulse::context::introspect::{ SinkInfo, SinkInputInfo, SourceOutputInfo };
@@ -107,6 +108,20 @@ impl PulseController {
 				_ => { mainloop.wait(); },
 			}
 		}
+	}
+
+	pub fn set_sink_input_volume(&self, index: u32, vol: u32) {
+		let mut context = self.context.borrow_mut();
+		let mut introspect = context.introspect();
+		let mut volumes = ChannelVolumes::default();
+		let volume: Volume = Volume::from(VolumeLinear(vol as f64 / (65535.0 * 1.5)));
+		// volume.pa_volume_t = vol;
+		volumes.set_len(2);
+		volumes.set(2, volume);
+		introspect.set_sink_input_volume(index, &volumes, None);
+		// println!("{:?}", volumes);
+		// introspect.set_sink_input_volume(index, )
+		// println!("New volume {}: {}", index, volume);
 	}
 
 	pub fn subscribe(&mut self) {
