@@ -79,44 +79,10 @@ pub trait Meter {
 	fn set_peak_volume(&mut self, peak: u32);
 	fn set_name_and_icon(&mut self, name: &str, icon_name: &str);
 
-		// let img_ref = image.clone();
-		// mute.connect_clicked(move |mute| {
-		// 	if mute.get_style_context().has_class("muted") {
-		// 		mute.get_style_context().remove_class("muted");
-		// 		img_ref.set_from_icon_name(Some("audio-volume-low-symbolic"), gtk::IconSize::Button);
-		// 	}
-		// 	else {
-		// 		mute.get_style_context().add_class("muted");
-		// 		img_ref.set_from_icon_name(Some("action-unavailable-symbolic"), gtk::IconSize::Button);
-		// 	}
-		// });
-
-		// let mute_ref = mute.clone();
-		// let mute_icon_ref = mute_icon.clone();
-		// scale.connect_value_changed(move |scale| {
-		// 	let value = scale.get_value().floor();
-
-		// 	if value >= 100.0 {
-		// 		mute_icon_ref.set_from_icon_name(Some("audio-volume-high-symbolic"), gtk::IconSize::Button);
-		// 	}
-		// 	else if value >= 10.0 {
-		// 		mute_icon_ref.set_from_icon_name(Some("audio-volume-medium-symbolic"), gtk::IconSize::Button);
-		// 	}
-		// 	else {
-		// 		mute_icon_ref.set_from_icon_name(Some("audio-volume-low-symbolic"), gtk::IconSize::Button);
-		// 	}
-
-		// 	let mut string = value.to_string();
-		// 	string.push_str("%");
-		// 	mute_ref.set_label(string.as_str());
-		// 	scale.set_fill_level(scale.get_value() / 2.0);
-		// });
-		
-		
-		// self_.show_all();
+	fn refresh(&mut self);
 }
 
-pub struct SinkMeter {
+pub struct StreamMeter {
 	pub widget: gtk::Box,
 	widgets: Widgets,
 	volume: u32,
@@ -124,14 +90,24 @@ pub struct SinkMeter {
 	muted: bool
 }
 
-impl SinkMeter {
-	fn update_status(&mut self) {
+impl Meter for StreamMeter {
+	fn new() -> Self {
+		let widgets = build_widget();
+		Self {
+			widget: widgets.root.clone(),
+			widgets,
+			peak: 0,
+			volume: 0,
+			muted: false
+		}
+	}
+
+	fn refresh(&mut self) {
 		let mut vol_scaled = ((self.volume as f64) / MAX_NATURAL_VOL * 100.0).round() as u8;
 		if vol_scaled > 150 { vol_scaled = 150 }
 
 		let peak_scaled = (self.peak as f64 * vol_scaled as f64 / 150.0) as u8;
 		// self.widgets.label.set_sensitive(!self.muted);
-
 		// println!("{:?}", self.peak);
 
 		self.widgets.scale.set_sensitive(!self.muted);
@@ -154,33 +130,17 @@ impl SinkMeter {
 		if self.muted { status_ctx.add_class("muted") }
 		else { status_ctx.remove_class("muted") }
 	}
-}
-
-impl Meter for SinkMeter {
-	fn new() -> Self {
-		let widgets = build_widget();
-		Self {
-			widget: widgets.root.clone(),
-			widgets,
-			peak: 0,
-			volume: 0,
-			muted: false
-		}
-	}
 
 	fn set_muted(&mut self, muted: bool) {
 		self.muted = muted;
-		self.update_status();
 	}
 
 	fn set_volume(&mut self, volume: u32) {
 		self.volume = volume;
-		self.update_status();
 	}
 
 	fn set_peak_volume(&mut self, peak: u32) {
 		self.peak = peak;
-		self.update_status();
 	}
 
 	fn set_name_and_icon(&mut self, label: &str, icon: &str) {
