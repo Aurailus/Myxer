@@ -50,11 +50,11 @@ scrollbar {
 /* At some point, figure out how to replace
 the hardcoded values with theme colors. */
 
-#meter scale trough highlight {
+#meter scale.visualizer trough highlight {
 	background-color: alpha(rgb(82, 148, 226), 0.4);
 }
 
-#meter scale trough fill {
+#meter scale.visualizer trough fill {
 	background-color: alpha(rgb(82, 148, 226), 1);
 }
 

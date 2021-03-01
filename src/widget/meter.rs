@@ -38,6 +38,7 @@ fn build_widget() -> Widgets {
 	label.set_lines(2);
 
 	let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, MAX_SCALE_VOL as f64, SCALE_STEP);
+	scale.get_style_context().add_class("visualizer");
 	root.pack_start(&scale, true, true, 2);
 
 	scale.set_inverted(true);
@@ -76,44 +77,45 @@ fn build_widget() -> Widgets {
 pub trait Meter {
 	fn new() -> Self;
 
-	fn set_muted(&mut self, muted: bool);
-	fn set_volume(&mut self, volume: u32);
-	fn set_peak_volume(&mut self, peak: u32);
+	fn set_visualizer(&mut self, peak: Option<u32>);
 	fn set_name_and_icon(&mut self, name: &str, icon_name: &str);
-
-	fn refresh(&mut self);
+	fn set_volume_and_muted(&mut self, volume: u32, muted: bool);
 }
 
-pub struct StreamMeter {
+pub struct OutputMeter {
 	pub widget: gtk::Box,
 	pub widgets: Widgets,
+	
 	volume: u32,
-	peak: u32,
-	muted: bool
+	muted: bool,
+
+	peak: Option<u32>
 }
 
-impl Meter for StreamMeter {
+impl Meter for OutputMeter {
 	fn new() -> Self {
 		let widgets = build_widget();
 		Self {
 			widget: widgets.root.clone(),
 			widgets,
-			peak: 0,
 			volume: 0,
-			muted: false
+			muted: false,
+
+			peak: Some(0)
 		}
 	}
 
-	fn refresh(&mut self) {
-		let peak_scaled = self.peak as f64 * (self.volume as f64 / MAX_SCALE_VOL as f64);
+	fn set_volume_and_muted(&mut self, volume: u32, muted: bool) {
+		if volume == self.volume && muted == self.muted { return; }
 
+		self.volume = volume;
+		self.muted = muted;
+		
 		self.widgets.scale.set_sensitive(!self.muted);
 		self.widgets.scale.set_value(self.volume as f64);
-		self.widgets.scale.set_fill_level(peak_scaled as f64);
-		self.widgets.scale.set_show_fill_level(!self.muted && peak_scaled > 0.5);
 
 		self.widgets.status_icon.set_from_icon_name(Some(
-			if self.muted { "action-unavailable-symbolic" }
+			if self.muted { "audio-volume-muted-symbolic" }
 			else if self.volume >= MAX_NATURAL_VOL { "audio-volume-high-symbolic" }
 			else if self.volume >= MAX_NATURAL_VOL / 2 { "audio-volume-medium-symbolic" }
 			else { "audio-volume-low-symbolic" }), gtk::IconSize::Button);
@@ -130,16 +132,94 @@ impl Meter for StreamMeter {
 		else { status_ctx.remove_class("muted") }
 	}
 
-	fn set_muted(&mut self, muted: bool) {
-		self.muted = muted;
-	}
+	fn set_visualizer(&mut self, peak: Option<u32>) {
+		if self.peak == peak { return; }
 
-	fn set_volume(&mut self, volume: u32) {
-		self.volume = volume;
-	}
-
-	fn set_peak_volume(&mut self, peak: u32) {
 		self.peak = peak;
+
+		if self.peak.is_some() {
+			let peak_scaled = self.peak.unwrap() as f64 * (self.volume as f64 / MAX_SCALE_VOL as f64);
+			self.widgets.scale.set_fill_level(peak_scaled as f64);
+			self.widgets.scale.set_show_fill_level(!self.muted && peak_scaled > 0.5);
+			self.widgets.scale.get_style_context().add_class("visualizer");
+		}
+		else {
+			self.widgets.scale.set_show_fill_level(false);
+			self.widgets.scale.get_style_context().remove_class("visualizer");
+		}
+	}
+
+	fn set_name_and_icon(&mut self, label: &str, icon: &str) {
+		self.widgets.icon.set_from_icon_name(Some(icon), gtk::IconSize::Dnd);
+		self.widgets.label.set_label(label);
+	}
+}
+
+pub struct InputMeter {
+	pub widget: gtk::Box,
+	pub widgets: Widgets,
+	
+	volume: u32,
+	muted: bool,
+
+	peak: Option<u32>
+}
+
+impl Meter for InputMeter {
+	fn new() -> Self {
+		let widgets = build_widget();
+		Self {
+			widget: widgets.root.clone(),
+			widgets,
+			volume: 0,
+			muted: false,
+
+			peak: Some(0)
+		}
+	}
+
+	fn set_volume_and_muted(&mut self, volume: u32, muted: bool) {
+		if volume == self.volume && muted == self.muted { return; }
+
+		self.volume = volume;
+		self.muted = muted;
+		
+		self.widgets.scale.set_sensitive(!self.muted);
+		self.widgets.scale.set_value(self.volume as f64);
+
+		self.widgets.status_icon.set_from_icon_name(Some(
+			if self.muted { "microphone-sensitivity-muted-symbolic" }
+			else if self.volume >= MAX_NATURAL_VOL { "microphone-sensitivity-high-symbolic" }
+			else if self.volume >= MAX_NATURAL_VOL / 2 { "microphone-sensitivity-medium-symbolic" }
+			else { "microphone-sensitivity-low-symbolic" }), gtk::IconSize::Button);
+
+		let mut vol_scaled = ((self.volume as f64) / MAX_NATURAL_VOL as f64 * 100.0).round() as u8;
+		if vol_scaled > 150 { vol_scaled = 150 }
+
+		let mut string = vol_scaled.to_string();
+		string.push_str("%");
+		self.widgets.status.set_label(string.as_str());
+
+		let status_ctx = self.widgets.status.get_style_context();
+		if self.muted { status_ctx.add_class("muted") }
+		else { status_ctx.remove_class("muted") }
+	}
+
+	fn set_visualizer(&mut self, peak: Option<u32>) {
+		if self.peak == peak { return; }
+
+		self.peak = peak;
+
+		if self.peak.is_some() {
+			let peak_scaled = self.peak.unwrap() as f64 * (self.volume as f64 / MAX_SCALE_VOL as f64);
+			self.widgets.scale.set_fill_level(peak_scaled as f64);
+			self.widgets.scale.set_show_fill_level(!self.muted && peak_scaled > 0.5);
+			self.widgets.scale.get_style_context().add_class("visualizer");
+		}
+		else {
+			self.widgets.scale.set_show_fill_level(false);
+			self.widgets.scale.get_style_context().remove_class("visualizer");
+		}
 	}
 
 	fn set_name_and_icon(&mut self, label: &str, icon: &str) {

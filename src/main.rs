@@ -1,3 +1,13 @@
+use std::collections::HashMap;
+
+extern crate gtk;
+extern crate gio;
+#[macro_use]
+extern crate slice_as_array;
+
+use gtk::prelude::*;
+use gio::prelude::*;
+
 mod shared;
 mod pulse;
 mod pulse_data;
@@ -6,49 +16,52 @@ mod meter;
 #[path = "./widget/notebook.rs"]
 mod notebook;
 
-extern crate gtk;
-extern crate gio;
-#[macro_use]
-extern crate slice_as_array;
-
-use std::collections::HashMap;
-
 use shared::Shared;
-
-use gtk::prelude::*;
-use gio::prelude::*;
-use gdk::WindowHints as WH;
-
-use meter::{ Meter, StreamMeter };
-use crate::pulse::{ PulseController };
+use crate::pulse::PulseController;
+use meter::{ Meter, OutputMeter, InputMeter };
 
 struct Meters {
-	pub sink: StreamMeter,
-	pub sink_inputs: HashMap<u32, StreamMeter>,
+	pub sink: OutputMeter,
+	pub sink_inputs: HashMap<u32, OutputMeter>,
 	pub sink_inputs_box: gtk::Box,
 	
-	pub source: StreamMeter,
-	pub source_outputs: HashMap<u32, StreamMeter>,
-	pub source_outputs_box: gtk::Box
+	pub source: InputMeter,
+	pub source_outputs: HashMap<u32, InputMeter>,
+	pub source_outputs_box: gtk::Box,
+
+	pub show_visualizers: bool
 }
 
 impl Meters {
 	pub fn new() -> Self {
-		let sink = StreamMeter::new();
+		let sink = OutputMeter::new();
 		sink.widget.get_style_context().add_class("outer");
 		sink.widget.get_style_context().add_class("bordered");
 
-		let source = StreamMeter::new();
+		let source = InputMeter::new();
 		source.widget.get_style_context().add_class("outer");
 		source.widget.get_style_context().add_class("bordered");
 
 		Meters {
 			sink, source,
+			show_visualizers: true,
 			sink_inputs: HashMap::new(),
 			sink_inputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
 			source_outputs: HashMap::new(),
 			source_outputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0)
 		}
+	}
+
+	fn toggle_visualizers(&mut self) -> bool {
+		self.show_visualizers = !self.show_visualizers;
+		if self.show_visualizers { return true; }
+
+		self.sink.set_visualizer(None);
+		self.source.set_visualizer(None);
+		for (_, input) in self.sink_inputs.iter_mut() { input.set_visualizer(None); }
+		for (_, output) in self.source_outputs.iter_mut() { output.set_visualizer(None); }
+
+		false
 	}
 }
 
@@ -66,149 +79,175 @@ fn main() {
 }
 
 fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
-
-	// Basic Structure
-
 	let window = gtk::ApplicationWindow::new(app);
-	window.set_title("Volume Mixer");
-	window.set_icon_name(Some("multimedia-volume-control"));
-
-	let geom = gdk::Geometry {
-		min_width: 580, min_height: 400,
-		max_width: 10000, max_height: 400,
-		base_width: -1, base_height: -1,
-		width_inc: -1, height_inc: -1,
-		min_aspect: 0.0, max_aspect: 0.0,
-		win_gravity: gdk::Gravity::Center
-	};
-
-	window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), WH::MIN_SIZE | WH::MAX_SIZE);
-
-	let style = include_str!("./style.css");
-	let provider = gtk::CssProvider::new();
-	provider.load_from_data(style.as_bytes()).expect("Failed to load CSS.");
-	gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK css provider."),
-		&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
-
-	let stack = gtk::Stack::new();
-	let stack_switcher = gtk::StackSwitcher::new();
-	stack_switcher.set_stack(Some(&stack));
-
 	let header = gtk::HeaderBar::new();
-	header.set_show_close_button(true);
-	header.set_custom_title(Some(&stack_switcher));
+	let stack = gtk::Stack::new();
+	
+	// Window Config & Header Bar
+	{
 
-	let title = gtk::Label::new(Some("Volume Mixer"));
-	title.get_style_context().add_class("title");
-	header.pack_start(&title);
-	header.set_decoration_layout(Some("icon:minimize,close"));
+		window.set_title("Volume Mixer");
+		window.set_icon_name(Some("multimedia-volume-control"));
 
-	let prefs_button = gtk::Button::from_icon_name(Some("open-menu-symbolic"), gtk::IconSize::SmallToolbar);
-	prefs_button.get_style_context().add_class("titlebutton");
-	prefs_button.set_widget_name("preferences");
-	prefs_button.set_can_focus(false);
-	header.pack_end(&prefs_button);
+		let geom = gdk::Geometry {
+			min_width: 580, min_height: 400,
+			max_width: 10000, max_height: 400,
+			base_width: -1, base_height: -1,
+			width_inc: -1, height_inc: -1,
+			min_aspect: 0.0, max_aspect: 0.0,
+			win_gravity: gdk::Gravity::Center
+		};
 
-	let prefs_popover = gtk::PopoverMenu::new();
-	prefs_popover.set_pointing_to(&gtk::Rectangle { x: 12, y: 32, width: 2, height: 2 });
-	prefs_popover.set_relative_to(Some(&prefs_button));
-	prefs_popover.set_border_width(8);
-	let prefs_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-	prefs_popover.add(&prefs_box);
+		window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
 
-	let prefs_preferences = gtk::ModelButton::new();
-	prefs_preferences.set_property_text(Some("Preferences"));
-	prefs_box.add(&prefs_preferences);
+		let style = include_str!("./style.css");
+		let provider = gtk::CssProvider::new();
+		provider.load_from_data(style.as_bytes()).expect("Failed to load CSS.");
+		gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK css provider."),
+			&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-	let prefs_help = gtk::ModelButton::new();
-	prefs_help.set_property_text(Some("Help"));
-	prefs_help.set_action_name(Some("app.help"));
-	prefs_box.add(&prefs_help);
+		let stack_switcher = gtk::StackSwitcher::new();
+		stack_switcher.set_stack(Some(&stack));
 
-	let prefs_about = gtk::ModelButton::new();
-	prefs_about.set_property_text(Some("About VMix"));
-	prefs_about.connect_clicked(|_| show_about());
-	prefs_box.add(&prefs_about);
+		header.set_show_close_button(true);
+		header.set_custom_title(Some(&stack_switcher));
 
-	prefs_popover.show_all();
+		let title = gtk::Label::new(Some("Volume Mixer"));
+		title.get_style_context().add_class("title");
+		header.pack_start(&title);
+		header.set_decoration_layout(Some("icon:minimize,close"));
+		
+		window.set_titlebar(Some(&header));
+	}
 
-	let prefs_popover_clone = prefs_popover.clone();
-	prefs_button.connect_clicked(move |_| prefs_popover_clone.popup());
+	// Preferences Button & Popup Menu
+	{
+		let prefs_button = gtk::Button::from_icon_name(Some("open-menu-symbolic"), gtk::IconSize::SmallToolbar);
+		prefs_button.get_style_context().add_class("titlebutton");
+		prefs_button.set_widget_name("preferences");
+		prefs_button.set_can_focus(false);
+		header.pack_end(&prefs_button);
 
-	window.set_titlebar(Some(&header));
+		let prefs = gtk::PopoverMenu::new();
+		prefs.set_pointing_to(&gtk::Rectangle { x: 12, y: 32, width: 2, height: 2 });
+		prefs.set_relative_to(Some(&prefs_button));
+		prefs.set_border_width(8);
 
-	// Connect
+		let prefs_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		prefs.add(&prefs_box);
+
+		let show_visualizers = gtk::ModelButton::new();
+		show_visualizers.set_property_text(Some("Show Visualizers"));
+		show_visualizers.set_action_name(Some("app.show_visualizers"));
+		prefs_box.add(&show_visualizers);
+
+		let split_channels = gtk::ModelButton::new();
+		split_channels.set_property_text(Some("Split Channels"));
+		split_channels.set_action_name(Some("app.split_channels"));
+		prefs_box.add(&split_channels);
+
+		prefs_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 4);
+
+		let help = gtk::ModelButton::new();
+		help.set_property_text(Some("Help"));
+		help.set_action_name(Some("app.help"));
+		prefs_box.add(&help);
+
+		let about = gtk::ModelButton::new();
+		about.set_property_text(Some("About VMix"));
+		about.set_action_name(Some("app.about"));
+		prefs_box.add(&about);
+
+		prefs_box.show_all();
+		prefs_button.connect_clicked(move |_| prefs.popup());
+	}
+
+	// Connect Pulse
 
 	pulse_shr.borrow_mut().connect();
 	pulse_shr.borrow_mut().subscribe();
 
-	// Add Meters & Elements
-
 	let meters_shr = Shared::new(Meters::new());
 
-	let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	output.pack_start(&meters_shr.borrow().sink.widget, false, false, 0);
-	output.set_border_width(4);
+	// Window Contents
+	{
+		let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		output.pack_start(&meters_shr.borrow().sink.widget, false, false, 0);
+		output.set_border_width(4);
 
-	let output_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
-	output_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
-	output_scroller.get_style_context().add_class("bordered");
-	output.pack_start(&output_scroller, true, true, 0);
-	output_scroller.add(&meters_shr.borrow().sink_inputs_box);
+		let output_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+		output_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
+		output_scroller.get_style_context().add_class("bordered");
+		output.pack_start(&output_scroller, true, true, 0);
+		output_scroller.add(&meters_shr.borrow().sink_inputs_box);
 
-	let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	input.pack_start(&meters_shr.borrow().source.widget, false, false, 0);
-	input.set_border_width(4);
+		let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		input.pack_start(&meters_shr.borrow().source.widget, false, false, 0);
+		input.set_border_width(4);
 
-	let input_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
-	input_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
-	input_scroller.get_style_context().add_class("bordered");
-	input.pack_start(&input_scroller, true, true, 0);
-	input_scroller.add(&meters_shr.borrow().source_outputs_box);
+		let input_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+		input_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
+		input_scroller.get_style_context().add_class("bordered");
+		input.pack_start(&input_scroller, true, true, 0);
+		input_scroller.add(&meters_shr.borrow().source_outputs_box);
 
-	let mut system_meter = StreamMeter::new();
-	system_meter.set_name_and_icon("System Sounds", "multimedia-volume-control");
-	system_meter.set_volume(65535);
-	meters_shr.borrow().sink_inputs_box.pack_start(&system_meter.widget, false, false, 0);
+		// let mut system_meter = OutputMeter::new();
+		// system_meter.set_name_and_icon("System Sounds", "multimedia-volume-control");
+		// system_meter.set_volume_and_muted(65535, false);
+		// meters_shr.borrow().sink_inputs_box.pack_start(&system_meter.widget, false, false, 0);
 
+		stack.add_titled(&output, "output", "Output");
+		stack.add_titled(&input, "input", "Input");
+
+		window.add(&stack);
+		window.show_all();
+	}
+
+	// Actions
+	{
+		let actions = gio::SimpleActionGroup::new();
+		window.insert_action_group("app", Some(&actions));
+
+		let about = gio::SimpleAction::new("about", None);
+		about.connect_activate(|_, _| show_about());
+		actions.add_action(&about);
+
+		let split_channels = gio::SimpleAction::new_stateful("split_channels", glib::VariantTy::new("bool").ok(), &false.to_variant());
+		split_channels.connect_activate(|_, _| show_about());
+		actions.add_action(&split_channels);
+
+		let meters_shr = meters_shr.clone();
+		let show_visualizers = gio::SimpleAction::new_stateful("show_visualizers", glib::VariantTy::new("bool").ok(), &true.to_variant());
+		show_visualizers.connect_activate(move |s, _| s.set_state(&meters_shr.borrow_mut().toggle_visualizers().to_variant()));
+		actions.add_action(&show_visualizers);
+	}
+
+	// Begin Update Loop
 	glib::timeout_add_local(1000 / 30, move || {
 		update(&pulse_shr, &meters_shr);
 		glib::Continue(true)
 	});
-
-	stack.add_titled(&output, "output", "Output");
-	stack.add_titled(&input, "input", "Input");
-
-	window.add(&stack);
-
-	// window.add(&notebook.widget);
-
-	window.show_all();
-
-	// show_about();
 }
 
 fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
-
 	if pulse_shr.borrow_mut().update() {
 		let pulse = pulse_shr.borrow();
 		let mut meters = meters_shr.borrow_mut();
+		let show = meters.show_visualizers;
 
 		let sink_opt = pulse.sinks.iter().next();
 		if sink_opt.is_some() {
 			let sink = sink_opt.unwrap().1;
 			meters.sink.set_name_and_icon(sink.data.description.as_str(), "audio-headphones");
-			meters.sink.set_volume(sink.data.volume.0);
-			meters.sink.set_muted(sink.data.muted);
-			meters.sink.set_peak_volume(sink.peak);
-			meters.sink.refresh();
+			meters.sink.set_volume_and_muted(sink.data.volume, sink.data.muted);
+			if show { meters.sink.set_visualizer(Some(sink.peak)); }
 		}
 
 		for (index, input) in pulse.sink_inputs.iter() {
 			let sink_inputs_box = meters.sink_inputs_box.clone();
 
-			let meter = meters.sink_inputs.entry(*index).or_insert({
-				let s = StreamMeter::new();
+			let meter = meters.sink_inputs.entry(*index).or_insert_with(|| {
+				let s = OutputMeter::new();
 				let index: u32 = *index;
 
 				let pulse = pulse_shr.clone();
@@ -226,10 +265,8 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 			});
 
 			meter.set_name_and_icon(input.data.name.as_str(), input.data.icon.as_str());
-			meter.set_volume(input.data.volume.0);
-			meter.set_muted(input.data.muted);
-			meter.set_peak_volume(input.peak);
-			meter.refresh();
+			meter.set_volume_and_muted(input.data.volume, input.data.muted);
+			if show { meter.set_visualizer(Some(input.peak)); }
 			
 			if meter.widget.get_parent().is_none() {
 				sink_inputs_box.pack_start(&meter.widget, false, false, 0);
@@ -243,15 +280,21 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 			keep
 		});
 
+		let source_opt = pulse.sources.iter().next();
+		if source_opt.is_some() {
+			let source = source_opt.unwrap().1;
+			meters.source.set_name_and_icon(source.data.description.as_str(), "audio-headphones");
+			meters.source.set_volume_and_muted(source.data.volume, source.data.muted);
+			if show { meters.source.set_visualizer(Some(source.peak)); }
+		}
+
 		for (index, output) in pulse.source_outputs.iter() {
 			let source_outputs_box = meters.source_outputs_box.clone();
 			
-			let meter = meters.source_outputs.entry(*index).or_insert(StreamMeter::new());
+			let meter = meters.source_outputs.entry(*index).or_insert_with(|| InputMeter::new());
 			meter.set_name_and_icon(output.data.name.as_str(), output.data.icon.as_str());
-			meter.set_volume(output.data.volume.0);
-			meter.set_muted(output.data.muted);
-			meter.set_peak_volume(output.peak);
-			meter.refresh();
+			meter.set_volume_and_muted(output.data.volume, output.data.muted);
+			if show { meter.set_visualizer(Some(output.peak)); }
 
 			if meter.widget.get_parent().is_none() {
 				source_outputs_box.pack_start(&meter.widget, false, false, 0);
@@ -277,7 +320,6 @@ fn show_about() {
 	about.set_version(Some("0.0.1-alpha"));
 	about.set_comments(Some("Modern Volume Mixer for PulseAudio."));
 	about.set_website(Some("https://www.aurailus.com"));
-	// about.set_website_label(Some("Aurailus.com"));
 	about.set_copyright(Some("© 2021 Auri Collings"));
 	about.set_license_type(gtk::License::Gpl30);
 	about.add_credit_section("Created by", &[ "Auri Collings" ]);
