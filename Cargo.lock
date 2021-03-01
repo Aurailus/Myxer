@@ -456,6 +456,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ee1c47aaa256ecabcaea351eae4a9b01ef39ed810004e298d2511ed284b1525"
 
 [[package]]
+name = "myxer"
+version = "0.1.0"
+dependencies = [
+ "gdk",
+ "gio",
+ "glib",
+ "gtk",
+ "libpulse-binding",
+ "libpulse-glib-binding",
+ "pango",
+ "slice_as_array",
+]
+
+[[package]]
 name = "num-derive"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -691,20 +705,6 @@ name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
-
-[[package]]
-name = "v-mix"
-version = "0.1.0"
-dependencies = [
- "gdk",
- "gio",
- "glib",
- "gtk",
- "libpulse-binding",
- "libpulse-glib-binding",
- "pango",
- "slice_as_array",
-]
 
 [[package]]
 name = "version-compare"

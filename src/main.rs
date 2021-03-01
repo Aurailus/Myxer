@@ -68,7 +68,7 @@ impl Meters {
 fn main() {
 	let pulse_shr = Shared::new(PulseController::new());
 
-	let app = gtk::Application::new(Some("com.aurailus.vmix"), Default::default())
+	let app = gtk::Application::new(Some("com.aurailus.myxer"), Default::default())
 		.expect("Failed to initialize GTK application.");
 		
 	let pulse = pulse_shr.clone();
@@ -85,7 +85,6 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	
 	// Window Config & Header Bar
 	{
-
 		window.set_title("Volume Mixer");
 		window.set_icon_name(Some("multimedia-volume-control"));
 
@@ -154,7 +153,7 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 		prefs_box.add(&help);
 
 		let about = gtk::ModelButton::new();
-		about.set_property_text(Some("About VMix"));
+		about.set_property_text(Some("About Myxer"));
 		about.set_action_name(Some("app.about"));
 		prefs_box.add(&about);
 
@@ -316,10 +315,10 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 fn show_about() {
 	let about = gtk::AboutDialog::new();
 	about.set_logo_icon_name(Some("multimedia-volume-control"));
-	about.set_program_name("VMix");
-	about.set_version(Some("0.0.1-alpha"));
-	about.set_comments(Some("Modern Volume Mixer for PulseAudio."));
-	about.set_website(Some("https://www.aurailus.com"));
+	about.set_program_name("Myxer");
+	about.set_version(Some("0.1.0"));
+	about.set_comments(Some("A modern Volume Mixer for PulseAudio."));
+	about.set_website(Some("https://myxer.aurailus.com"));
 	about.set_copyright(Some("© 2021 Auri Collings"));
 	about.set_license_type(gtk::License::Gpl30);
 	about.add_credit_section("Created by", &[ "Auri Collings" ]);

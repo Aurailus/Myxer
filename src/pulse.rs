@@ -55,14 +55,14 @@ pub struct PulseController {
 impl PulseController {
 	pub fn new() -> Self {
 		let mut proplist = Proplist::new().unwrap();
-		proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "VMix")
+		proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "Myxer")
 			.expect("PulseController: Failed to set application name.");
 
 		let mainloop = Shared::new(Mainloop::new()
 			.expect("PulseController: Failed to initialize mainloop."));
 
 		let context = Shared::new(
-			Context::new_with_proplist(&*mainloop.borrow(), "VMix Context", &proplist)
+			Context::new_with_proplist(&*mainloop.borrow(), "Myxer Context", &proplist)
 			.expect("PulseController: Failed to initialize context."));
 
 		let ( tx, rx ) = channel::<TxMessage>();
@@ -173,7 +173,7 @@ impl PulseController {
 		fn tx_source_output(tx: &Sender<TxMessage>, result: ListResult<&SourceOutputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				let app_id = item.proplist.get_str("application.process.binary").unwrap_or("".to_owned());
-				if app_id.contains("pavucontrol") || app_id.contains("v-mix") { return; }
+				if app_id.contains("pavucontrol") || app_id.contains("myxer") { return; }
 				tx.send(TxMessage::SourceOutputUpdate(SourceOutputData {
 					index: item.index, source: item.source,
 					name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
@@ -354,7 +354,7 @@ impl PulseController {
 		let spec = Spec { channels: 1, format: Format::F32le, rate: 30 };
 		assert!(spec.is_valid());
 		
-		let s = Shared::new(Stream::new(&mut self.context.borrow_mut(), "VMix Peak Detect", &spec, None).unwrap());
+		let s = Shared::new(Stream::new(&mut self.context.borrow_mut(), "Peak Detect", &spec, None).unwrap());
 		{
 			let mut stream = s.borrow_mut();
 			if t == PeakType::SinkInput {
