@@ -22,8 +22,8 @@ package = "libpulse-glib-binding"
 
 [dependencies.gtk]
 version = "0.9.0"
-features = ["v3_16"]
+features = [ "v3_22" ]
 
 [dependencies.gio]
 version = ""
-features = ["v2_44"]
+features = [ "v2_44" ]

@@ -8,7 +8,8 @@ mod notebook;
 
 extern crate gtk;
 extern crate gio;
-#[macro_use] extern crate slice_as_array;
+#[macro_use]
+extern crate slice_as_array;
 
 use std::collections::HashMap;
 
@@ -16,6 +17,7 @@ use shared::Shared;
 
 use gtk::prelude::*;
 use gio::prelude::*;
+use gdk::WindowHints as WH;
 
 use meter::{ Meter, StreamMeter };
 use crate::pulse::{ PulseController };
@@ -32,7 +34,7 @@ struct Meters {
 
 impl Meters {
 	pub fn new() -> Self {
-		let mut sink = StreamMeter::new();
+		let sink = StreamMeter::new();
 		sink.widget.get_style_context().add_class("outer");
 		sink.widget.get_style_context().add_class("bordered");
 
@@ -51,66 +53,36 @@ impl Meters {
 }
 
 fn main() {
-	let pulse = Shared::new(PulseController::new());
-	pulse.borrow_mut().connect();
+	let pulse_shr = Shared::new(PulseController::new());
 
 	let app = gtk::Application::new(Some("com.aurailus.vmix"), Default::default())
 		.expect("Failed to initialize GTK application.");
 		
-	let pulse_shr = pulse.clone();
-	app.connect_activate(move |app| activate(app, pulse_shr.clone()));
+	let pulse = pulse_shr.clone();
+	app.connect_activate(move |app| activate(app, pulse.clone()));
 	app.run(&[]);
 
-	// pulse.borrow_mut().cleanup();
+	pulse_shr.borrow_mut().cleanup();
 }
 
 fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
-	
-	// Window & Header
+
+	// Basic Structure
 
 	let window = gtk::ApplicationWindow::new(app);
 	window.set_title("Volume Mixer");
-	window.set_border_width(0);
-	window.set_resizable(false);
-	window.set_default_size(530, 320);
 	window.set_icon_name(Some("multimedia-volume-control"));
 
-	let stack = gtk::Stack::new();
-	let stack_switcher = gtk::StackSwitcher::new();
-	stack_switcher.set_stack(Some(&stack));
+	let geom = gdk::Geometry {
+		min_width: 580, min_height: 400,
+		max_width: 10000, max_height: 400,
+		base_width: -1, base_height: -1,
+		width_inc: -1, height_inc: -1,
+		min_aspect: 0.0, max_aspect: 0.0,
+		win_gravity: gdk::Gravity::Center
+	};
 
-	let header = gtk::HeaderBar::new();
-	header.set_show_close_button(true);
-
-	let title = gtk::Label::new(Some("Volume Mixer"));
-	title.get_style_context().add_class("title");
-	header.pack_start(&title);
-	header.set_decoration_layout(Some("icon:minimize,close"));
-
-	let preferences_btn = gtk::Button::from_icon_name(Some("applications-system-symbolic"), gtk::IconSize::SmallToolbar);
-	preferences_btn.get_style_context().add_class("titlebutton");
-	preferences_btn.set_widget_name("preferences");
-	preferences_btn.set_can_focus(false);
-	header.pack_end(&preferences_btn);
-
-	let preferences_popover = gtk::Popover::new(Some(&preferences_btn));
-	let aaa = gtk::Label::new(Some("aadawdwadaa\ndwahdawhd\ndawdad"));
-	preferences_popover.add(&aaa);
-
-	let preferences_popover_clone = preferences_popover.clone();
-	preferences_btn.connect_clicked(move |_| preferences_popover_clone.show_all());
-	header.set_custom_title(Some(&stack_switcher));
-
-	window.set_titlebar(Some(&header));
-
-	// Setup Pulse
-
-	{
-		let mut pulse = pulse_shr.borrow_mut();
-		pulse.subscribe();
-	}
-
-	// Include styles
+	window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), WH::MIN_SIZE | WH::MAX_SIZE);
 
 	let style = include_str!("./style.css");
 	let provider = gtk::CssProvider::new();
@@ -118,57 +90,105 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK css provider."),
 		&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
+	let stack = gtk::Stack::new();
+	let stack_switcher = gtk::StackSwitcher::new();
+	stack_switcher.set_stack(Some(&stack));
+
+	let header = gtk::HeaderBar::new();
+	header.set_show_close_button(true);
+	header.set_custom_title(Some(&stack_switcher));
+
+	let title = gtk::Label::new(Some("Volume Mixer"));
+	title.get_style_context().add_class("title");
+	header.pack_start(&title);
+	header.set_decoration_layout(Some("icon:minimize,close"));
+
+	let prefs_button = gtk::Button::from_icon_name(Some("open-menu-symbolic"), gtk::IconSize::SmallToolbar);
+	prefs_button.get_style_context().add_class("titlebutton");
+	prefs_button.set_widget_name("preferences");
+	prefs_button.set_can_focus(false);
+	header.pack_end(&prefs_button);
+
+	let prefs_popover = gtk::PopoverMenu::new();
+	prefs_popover.set_pointing_to(&gtk::Rectangle { x: 12, y: 32, width: 2, height: 2 });
+	prefs_popover.set_relative_to(Some(&prefs_button));
+	prefs_popover.set_border_width(8);
+	let prefs_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+	prefs_popover.add(&prefs_box);
+
+	let prefs_preferences = gtk::ModelButton::new();
+	prefs_preferences.set_property_text(Some("Preferences"));
+	prefs_box.add(&prefs_preferences);
+
+	let prefs_help = gtk::ModelButton::new();
+	prefs_help.set_property_text(Some("Help"));
+	prefs_help.set_action_name(Some("app.help"));
+	prefs_box.add(&prefs_help);
+
+	let prefs_about = gtk::ModelButton::new();
+	prefs_about.set_property_text(Some("About VMix"));
+	prefs_about.connect_clicked(|_| show_about());
+	prefs_box.add(&prefs_about);
+
+	prefs_popover.show_all();
+
+	let prefs_popover_clone = prefs_popover.clone();
+	prefs_button.connect_clicked(move |_| prefs_popover_clone.popup());
+
+	window.set_titlebar(Some(&header));
+
+	// Connect
+
+	pulse_shr.borrow_mut().connect();
+	pulse_shr.borrow_mut().subscribe();
 
 	// Add Meters & Elements
 
-	let meters = Shared::new(Meters::new());
+	let meters_shr = Shared::new(Meters::new());
 
-	let playback = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	playback.pack_start(&meters.borrow().sink.widget, false, false, 0);
-	playback.set_border_width(4);
+	let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	output.pack_start(&meters_shr.borrow().sink.widget, false, false, 0);
+	output.set_border_width(4);
 
-	let playback_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
-	playback_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
-	playback_scroller.get_style_context().add_class("bordered");
-	playback.pack_start(&playback_scroller, true, true, 0);
-	playback_scroller.add(&meters.borrow().sink_inputs_box);
+	let output_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+	output_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
+	output_scroller.get_style_context().add_class("bordered");
+	output.pack_start(&output_scroller, true, true, 0);
+	output_scroller.add(&meters_shr.borrow().sink_inputs_box);
 
-	let recording = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	recording.pack_start(&meters.borrow().source.widget, false, false, 0);
-	recording.set_border_width(4);
+	let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	input.pack_start(&meters_shr.borrow().source.widget, false, false, 0);
+	input.set_border_width(4);
 
-	let recording_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
-	recording_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
-	recording_scroller.get_style_context().add_class("bordered");
-	recording.pack_start(&recording_scroller, true, true, 0);
-	recording_scroller.add(&meters.borrow().source_outputs_box);
+	let input_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
+	input_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
+	input_scroller.get_style_context().add_class("bordered");
+	input.pack_start(&input_scroller, true, true, 0);
+	input_scroller.add(&meters_shr.borrow().source_outputs_box);
 
 	let mut system_meter = StreamMeter::new();
 	system_meter.set_name_and_icon("System Sounds", "multimedia-volume-control");
 	system_meter.set_volume(65535);
-	meters.borrow().sink_inputs_box.pack_start(&system_meter.widget, false, false, 0);
+	meters_shr.borrow().sink_inputs_box.pack_start(&system_meter.widget, false, false, 0);
 
 	glib::timeout_add_local(1000 / 30, move || {
-		let meters_shr = meters.clone();
-		let pulse_shr = pulse_shr.clone();
-		update(pulse_shr, meters_shr);
+		update(&pulse_shr, &meters_shr);
 		glib::Continue(true)
 	});
 
-	// let mut notebook = Notebook::new();
-	// notebook.add_tab("Playback", playback.upcast());
-	// notebook.add_tab("Recording", recording.upcast());
-	stack.add_titled(&playback, "playback", "Output");
-	stack.add_titled(&recording, "recording", "Input");
+	stack.add_titled(&output, "output", "Output");
+	stack.add_titled(&input, "input", "Input");
 
 	window.add(&stack);
 
 	// window.add(&notebook.widget);
 
 	window.show_all();
+
+	// show_about();
 }
 
-fn update(pulse_shr: Shared<PulseController>, meters_shr: Shared<Meters>) {
+fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 
 	if pulse_shr.borrow_mut().update() {
 		let pulse = pulse_shr.borrow();
@@ -186,15 +206,21 @@ fn update(pulse_shr: Shared<PulseController>, meters_shr: Shared<Meters>) {
 
 		for (index, input) in pulse.sink_inputs.iter() {
 			let sink_inputs_box = meters.sink_inputs_box.clone();
-			let pulse_shr = pulse_shr.clone();
 
 			let meter = meters.sink_inputs.entry(*index).or_insert({
 				let s = StreamMeter::new();
 				let index: u32 = *index;
+
+				let pulse = pulse_shr.clone();
 				s.widgets.scale.connect_change_value(move |_, _, value| {
-					let pulse = pulse_shr.borrow_mut();
-					pulse.set_sink_input_volume(index, value as u32);
+					pulse.borrow_mut().set_sink_input_volume(index, value as u32);
 					gtk::Inhibit(false)
+				});
+
+				let pulse = pulse_shr.clone();
+				s.widgets.status.connect_clicked(move |status| {
+					pulse.borrow_mut().set_sink_input_muted(index,
+						!status.get_style_context().has_class("muted"));
 				});
 				s
 			});
@@ -242,4 +268,21 @@ fn update(pulse_shr: Shared<PulseController>, meters_shr: Shared<Meters>) {
 		meters.sink_inputs_box.show_all();
 		meters.source_outputs_box.show_all();
 	}
+}
+
+fn show_about() {
+	let about = gtk::AboutDialog::new();
+	about.set_logo_icon_name(Some("multimedia-volume-control"));
+	about.set_program_name("VMix");
+	about.set_version(Some("0.0.1-alpha"));
+	about.set_comments(Some("Modern Volume Mixer for PulseAudio."));
+	about.set_website(Some("https://www.aurailus.com"));
+	// about.set_website_label(Some("Aurailus.com"));
+	about.set_copyright(Some("© 2021 Auri Collings"));
+	about.set_license_type(gtk::License::Gpl30);
+	about.add_credit_section("Created by", &[ "Auri Collings" ]);
+	about.add_credit_section("libpulse-binding by", &[ "Lyndon Brown" ]);
+
+	about.connect_response(|about, _| about.close());
+	about.run();
 }

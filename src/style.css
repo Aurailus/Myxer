@@ -14,7 +14,7 @@ headerbar box:last-child {
 
 headerbar button#preferences.image-button {
 	border-radius: 50%;
-	margin-right: -6px;
+	margin-right: -8px;
 	padding: 0px;
 	margin-top: 8px;
 	margin-bottom: 8px;
@@ -22,6 +22,7 @@ headerbar button#preferences.image-button {
 
 headerbar #preferences image {
 	opacity: .7;
+	-gtk-icon-transform: scale(0.75);
 }
 
 

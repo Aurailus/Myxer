@@ -10,7 +10,7 @@ pub struct Widgets {
 	icon: gtk::Image,
 	label: gtk::Label,
 	pub scale: gtk::Scale,
-	status: gtk::Button,
+	pub status: gtk::Button,
 	status_icon: gtk::Image
 }
 
