@@ -1,26 +1,28 @@
+use slice_as_array::{ slice_as_array, slice_as_array_transmute };
+
+use pulse::def::BufferAttr;
+use pulse::proplist::Proplist;
+use pulse::callbacks::ListResult;
+use pulse::sample::{ Spec, Format };
+use pulse::mainloop::threaded::Mainloop;
+use pulse::volume::{ ChannelVolumes, Volume };
+use pulse::context::{ Context, FlagSet as CtxFlagSet };
+use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
+use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
+use pulse::context::introspect::{ SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo };
+
 use std::collections::HashMap;
 use std::sync::mpsc::{ channel, Sender, Receiver };
 
 use crate::shared::Shared;
 use crate::pulse_data::{ Sink, SinkData, SinkInput, SinkInputData, Source, SourceData, SourceOutput, SourceOutputData };
 
-use pulse::mainloop::threaded::Mainloop;
-use pulse::context::{ Context, FlagSet as CtxFlagSet };
-
-use pulse::proplist::Proplist;
-use pulse::def::{ BufferAttr };
-use pulse::callbacks::ListResult;
-use pulse::sample::{ Spec, Format };
-use pulse::volume::{ ChannelVolumes, Volume };
-use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
-use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
-use pulse::context::introspect::{ SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo };
 
 #[derive(Copy)]
 #[derive(Clone)]
 #[derive(Debug)]
 #[derive(PartialEq)]
-enum PeakType {
+pub enum StreamType {
 	Sink, SinkInput, Source, SourceOutput
 }
 
@@ -33,7 +35,7 @@ enum TxMessage {
 	SourceRemove(u32),
 	SourceOutputUpdate(SourceOutputData),
 	SourceOutputRemove(u32),
-	Peak(PeakType, u32, u32)
+	Peak(StreamType, u32, u32)
 }
 
 struct Channel<T> {
@@ -68,8 +70,7 @@ impl PulseController {
 		let ( tx, rx ) = channel::<TxMessage>();
 
 		PulseController {
-			mainloop: mainloop,
-			context: context,
+			mainloop, context,
 			channel: Channel { tx, rx },
 
 			sinks: HashMap::new(),
@@ -90,9 +91,8 @@ impl PulseController {
 			match unsafe { (*ctx_shr_ref.as_ptr()).get_state() } {
 				pulse::context::State::Ready |
 				pulse::context::State::Failed |
-				pulse::context::State::Terminated => {
-					unsafe { (*mainloop_shr_ref.as_ptr()).signal(false); }
-				},
+				pulse::context::State::Terminated =>
+					unsafe { (*mainloop_shr_ref.as_ptr()).signal(false); },
 				_ => {},
 			}
 		})));
@@ -122,16 +122,29 @@ impl PulseController {
 		}
 	}
 
-	pub fn set_sink_input_volume(&self, index: u32, vol: u32) {
+	pub fn set_volume(&self, t: StreamType, index: u32, vol: u32) {
 		let mut volumes = ChannelVolumes::default();
 		let volume = Volume(vol);
 		volumes.set_len(2);
 		volumes.set(2, volume);
-		self.context.borrow().introspect().set_sink_input_volume(index, &volumes, None);
+		let mut introspect = self.context.borrow().introspect();
+		
+		match t {
+			StreamType::Sink => drop(introspect.set_sink_volume_by_index(index, &volumes, None)),
+			StreamType::SinkInput => drop(introspect.set_sink_input_volume(index, &volumes, None)),
+			StreamType::Source => drop(introspect.set_source_volume_by_index(index, &volumes, None)),
+			StreamType::SourceOutput => drop(introspect.set_source_output_volume(index, &volumes, None))
+		};
 	}
 
-	pub fn set_sink_input_muted(&self, index: u32, muted: bool) {
-		self.context.borrow().introspect().set_sink_input_mute(index, muted, None);
+	pub fn set_muted(&self, t: StreamType, index: u32, muted: bool) {
+		let mut introspect = self.context.borrow().introspect();
+		match t {
+			StreamType::Sink => drop(introspect.set_sink_mute_by_index(index, muted, None)),
+			StreamType::SinkInput => drop(introspect.set_sink_input_mute(index, muted, None)),
+			StreamType::Source => drop(introspect.set_source_mute_by_index(index, muted, None)),
+			StreamType::SourceOutput => drop(introspect.set_source_output_mute(index, muted, None))
+		};
 	}
 
 	pub fn subscribe(&mut self) {
@@ -206,19 +219,19 @@ impl PulseController {
 			match facility {
 				Facility::Sink => match operation {
 					Operation::Removed => tx.send(TxMessage::SinkRemove(index)).unwrap(),
-					_ => { introspect.get_sink_info_by_index(index, move |res| tx_sink(&tx, res)); }
+					_ => drop(introspect.get_sink_info_by_index(index, move |res| tx_sink(&tx, res)))
 				},
 				Facility::SinkInput => match operation {
 					Operation::Removed => tx.send(TxMessage::SinkInputRemove(index)).unwrap(),
-					_ => { introspect.get_sink_input_info(index, move |res| tx_sink_input(&tx, res)); }
+					_ => drop(introspect.get_sink_input_info(index, move |res| tx_sink_input(&tx, res)))
 				},
 				Facility::Source => match operation {
 					Operation::Removed => tx.send(TxMessage::SourceRemove(index)).unwrap(),
-					_ => { introspect.get_source_info_by_index(index, move |res| tx_source(&tx, res)); }
+					_ => drop(introspect.get_source_info_by_index(index, move |res| tx_source(&tx, res)))
 				},
 				Facility::SourceOutput => match operation {
 					Operation::Removed => tx.send(TxMessage::SourceOutputRemove(index)).unwrap(),
-					_ => { introspect.get_source_output_info(index, move |res| tx_source_output(&tx, res)); }
+					_ => drop(introspect.get_source_output_info(index, move |res| tx_source_output(&tx, res)))
 				},
 				_ => ()
 			};
@@ -263,12 +276,12 @@ impl PulseController {
 		mainloop.unlock();
 	}
 
-	fn update_peak(&mut self, t: PeakType, index: u32, peak: u32) {
+	fn update_peak(&mut self, t: StreamType, index: u32, peak: u32) {
 		match t {
-			PeakType::Sink => self.sinks.get_mut(&index).unwrap().peak = peak,
-			PeakType::SinkInput => self.sink_inputs.get_mut(&index).unwrap().peak = peak,
-			PeakType::Source => self.sources.get_mut(&index).unwrap().peak = peak,
-			PeakType::SourceOutput => self.source_outputs.get_mut(&index).unwrap().peak = peak
+			StreamType::Sink => self.sinks.get_mut(&index).unwrap().peak = peak,
+			StreamType::SinkInput => self.sink_inputs.get_mut(&index).unwrap().peak = peak,
+			StreamType::Source => self.sources.get_mut(&index).unwrap().peak = peak,
+			StreamType::SourceOutput => self.source_outputs.get_mut(&index).unwrap().peak = peak
 		}
 	}
 
@@ -277,7 +290,7 @@ impl PulseController {
 		let entry = self.sinks.get_mut(&index);
 		if entry.is_some() { entry.unwrap().data = data; }
 		else {
-			let stream = self.create_monitor_stream(PeakType::Sink, Some(data.monitor_index.to_string().as_str()), index);
+			let stream = self.create_monitor_stream(StreamType::Sink, Some(data.monitor_index.to_string().as_str()), index);
 			self.sinks.insert(index, Sink { data, peak: 0, monitor: stream });
 		}
 	}
@@ -291,7 +304,7 @@ impl PulseController {
 		let entry = self.sink_inputs.get_mut(&index);
 		if entry.is_some() { entry.unwrap().data = data; }
 		else {
-			let stream = self.create_monitor_stream(PeakType::SinkInput, None, index);
+			let stream = self.create_monitor_stream(StreamType::SinkInput, None, index);
 			self.sink_inputs.insert(index, SinkInput { data, peak: 0, monitor: stream });
 		}
 	}
@@ -305,7 +318,7 @@ impl PulseController {
 		let entry = self.sources.get_mut(&index);
 		if entry.is_some() { entry.unwrap().data = data; }
 		else {
-			let stream = self.create_monitor_stream(PeakType::Source, Some(data.index.to_string().as_str()), index);
+			let stream = self.create_monitor_stream(StreamType::Source, Some(data.index.to_string().as_str()), index);
 			self.sources.insert(index, Source { data, peak: 0, monitor: stream });
 		}
 	}
@@ -320,7 +333,7 @@ impl PulseController {
 		let entry = self.source_outputs.get_mut(&index);
 		if entry.is_some() { entry.unwrap().data = data; }
 		else {
-			let stream = self.create_monitor_stream(PeakType::SourceOutput, Some(source.to_string().as_str()), index);
+			let stream = self.create_monitor_stream(StreamType::SourceOutput, Some(source.to_string().as_str()), index);
 			self.source_outputs.insert(index, SourceOutput { data, peak: 0, monitor: stream });
 		}
 	}
@@ -329,8 +342,8 @@ impl PulseController {
 		self.source_outputs.remove(&index);
 	}
 
-	fn create_monitor_stream(&mut self, t: PeakType, source: Option<&str>, stream_index: u32) -> Shared<Stream> {
-		fn read_callback(stream: &mut Stream, t: PeakType, index: u32, tx: &Sender<TxMessage>) {
+	fn create_monitor_stream(&mut self, t: StreamType, source: Option<&str>, stream_index: u32) -> Shared<Stream> {
+		fn read_callback(stream: &mut Stream, t: StreamType, index: u32, tx: &Sender<TxMessage>) {
 			let mut raw_peak = 0.0;
 			while stream.readable_size().is_some() {
 				match stream.peek().unwrap() {
@@ -357,7 +370,7 @@ impl PulseController {
 		let s = Shared::new(Stream::new(&mut self.context.borrow_mut(), "Peak Detect", &spec, None).unwrap());
 		{
 			let mut stream = s.borrow_mut();
-			if t == PeakType::SinkInput {
+			if t == StreamType::SinkInput {
 				stream.set_monitor_stream(stream_index).unwrap();
 			}
 

@@ -1,24 +1,17 @@
 use std::collections::HashMap;
 
-extern crate gtk;
-extern crate gio;
-#[macro_use]
-extern crate slice_as_array;
-
 use gtk::prelude::*;
 use gio::prelude::*;
 
-mod shared;
 mod pulse;
-mod pulse_data;
-#[path = "./widget/meter.rs"]
 mod meter;
-#[path = "./widget/notebook.rs"]
-mod notebook;
+mod about;
+mod shared;
+mod pulse_data;
 
+use meter::*;
+use crate::pulse::*;
 use shared::Shared;
-use crate::pulse::PulseController;
-use meter::{ Meter, OutputMeter, InputMeter };
 
 struct Meters {
 	pub sink: OutputMeter,
@@ -171,6 +164,20 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	// Window Contents
 	{
 		let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		let sink_meter = &meters_shr.borrow().sink;
+
+		let pulse = pulse_shr.clone();
+		sink_meter.widgets.scale.connect_change_value(move |_, _, value| {
+			pulse.borrow_mut().set_volume(StreamType::Sink, 0, value as u32);
+			gtk::Inhibit(false)
+		});
+
+		let pulse = pulse_shr.clone();
+		sink_meter.widgets.status.connect_clicked(move |status| {
+			pulse.borrow_mut().set_muted(StreamType::Sink, 0,
+				!status.get_style_context().has_class("muted"));
+		});
+
 		output.pack_start(&meters_shr.borrow().sink.widget, false, false, 0);
 		output.set_border_width(4);
 
@@ -181,7 +188,21 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 		output_scroller.add(&meters_shr.borrow().sink_inputs_box);
 
 		let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-		input.pack_start(&meters_shr.borrow().source.widget, false, false, 0);
+		let source_meter = &meters_shr.borrow().source;
+
+		let pulse = pulse_shr.clone();
+		source_meter.widgets.scale.connect_change_value(move |_, _, value| {
+			pulse.borrow_mut().set_volume(StreamType::Source, 0, value as u32);
+			gtk::Inhibit(false)
+		});
+
+		let pulse = pulse_shr.clone();
+		source_meter.widgets.status.connect_clicked(move |status| {
+			pulse.borrow_mut().set_muted(StreamType::Source, 0,
+				!status.get_style_context().has_class("muted"));
+		});
+
+		input.pack_start(&source_meter.widget, false, false, 0);
 		input.set_border_width(4);
 
 		let input_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
@@ -208,11 +229,11 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 		window.insert_action_group("app", Some(&actions));
 
 		let about = gio::SimpleAction::new("about", None);
-		about.connect_activate(|_, _| show_about());
+		about.connect_activate(|_, _| about::about());
 		actions.add_action(&about);
 
 		let split_channels = gio::SimpleAction::new_stateful("split_channels", glib::VariantTy::new("bool").ok(), &false.to_variant());
-		split_channels.connect_activate(|_, _| show_about());
+		// split_channels.connect_activate(|_, _| show_about());
 		actions.add_action(&split_channels);
 
 		let meters_shr = meters_shr.clone();
@@ -234,9 +255,8 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 		let mut meters = meters_shr.borrow_mut();
 		let show = meters.show_visualizers;
 
-		let sink_opt = pulse.sinks.iter().next();
-		if sink_opt.is_some() {
-			let sink = sink_opt.unwrap().1;
+		if let Some(sink_pair) = pulse.sinks.iter().next() {
+			let sink = sink_pair.1;
 			meters.sink.set_name_and_icon(sink.data.description.as_str(), "audio-headphones");
 			meters.sink.set_volume_and_muted(sink.data.volume, sink.data.muted);
 			if show { meters.sink.set_visualizer(Some(sink.peak)); }
@@ -251,13 +271,13 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 
 				let pulse = pulse_shr.clone();
 				s.widgets.scale.connect_change_value(move |_, _, value| {
-					pulse.borrow_mut().set_sink_input_volume(index, value as u32);
+					pulse.borrow_mut().set_volume(StreamType::SinkInput, index, value as u32);
 					gtk::Inhibit(false)
 				});
 
 				let pulse = pulse_shr.clone();
 				s.widgets.status.connect_clicked(move |status| {
-					pulse.borrow_mut().set_sink_input_muted(index,
+					pulse.borrow_mut().set_muted(StreamType::SinkInput, index,
 						!status.get_style_context().has_class("muted"));
 				});
 				s
@@ -279,9 +299,8 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 			keep
 		});
 
-		let source_opt = pulse.sources.iter().next();
-		if source_opt.is_some() {
-			let source = source_opt.unwrap().1;
+		if let Some(source_pair) = pulse.sources.iter().next() {
+			let source = source_pair.1;
 			meters.source.set_name_and_icon(source.data.description.as_str(), "audio-headphones");
 			meters.source.set_volume_and_muted(source.data.volume, source.data.muted);
 			if show { meters.source.set_visualizer(Some(source.peak)); }
@@ -290,7 +309,23 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 		for (index, output) in pulse.source_outputs.iter() {
 			let source_outputs_box = meters.source_outputs_box.clone();
 			
-			let meter = meters.source_outputs.entry(*index).or_insert_with(|| InputMeter::new());
+			let meter = meters.source_outputs.entry(*index).or_insert_with(|| {
+				let s = InputMeter::new();
+				let index: u32 = *index;
+
+				let pulse = pulse_shr.clone();
+				s.widgets.scale.connect_change_value(move |_, _, value| {
+					pulse.borrow_mut().set_volume(StreamType::SourceOutput, index, value as u32);
+					gtk::Inhibit(false)
+				});
+
+				let pulse = pulse_shr.clone();
+				s.widgets.status.connect_clicked(move |status| {
+					pulse.borrow_mut().set_muted(StreamType::SourceOutput, index,
+						!status.get_style_context().has_class("muted"));
+				});
+				s
+			});
 			meter.set_name_and_icon(output.data.name.as_str(), output.data.icon.as_str());
 			meter.set_volume_and_muted(output.data.volume, output.data.muted);
 			if show { meter.set_visualizer(Some(output.peak)); }
@@ -310,20 +345,4 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 		meters.sink_inputs_box.show_all();
 		meters.source_outputs_box.show_all();
 	}
-}
-
-fn show_about() {
-	let about = gtk::AboutDialog::new();
-	about.set_logo_icon_name(Some("multimedia-volume-control"));
-	about.set_program_name("Myxer");
-	about.set_version(Some("0.1.0"));
-	about.set_comments(Some("A modern Volume Mixer for PulseAudio."));
-	about.set_website(Some("https://myxer.aurailus.com"));
-	about.set_copyright(Some("© 2021 Auri Collings"));
-	about.set_license_type(gtk::License::Gpl30);
-	about.add_credit_section("Created by", &[ "Auri Collings" ]);
-	about.add_credit_section("libpulse-binding by", &[ "Lyndon Brown" ]);
-
-	about.connect_response(|about, _| about.close());
-	about.run();
 }
