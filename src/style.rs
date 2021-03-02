@@ -16,9 +16,10 @@ pub fn style(window: &gtk::ApplicationWindow) {
 	};
 
 	let row = gtk::ListBoxRow::new();
+	let button = gtk::Button::new();
 	add_color("scale_color", &row.get_style_context().get_background_color(gtk::StateFlags::SELECTED));
 	add_color("background_color", &window.get_style_context().get_background_color(gtk::StateFlags::NORMAL));
-	add_color("foreground_color", &row.get_style_context().get_color(gtk::StateFlags::NORMAL));
+	add_color("foreground_color", &button.get_style_context().get_color(gtk::StateFlags::NORMAL));
 
 	let style = include_str!("./style.css");
 	s.push_str(style);
