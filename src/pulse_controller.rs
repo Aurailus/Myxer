@@ -125,8 +125,18 @@ impl PulseController {
 	pub fn set_volume(&self, t: StreamType, index: u32, vol: u32) {
 		let mut volumes = ChannelVolumes::default();
 		let volume = Volume(vol);
-		volumes.set_len(2);
-		volumes.set(2, volume);
+		
+		match t {
+			StreamType::Sink | StreamType::SinkInput => {
+				volumes.set_len(2);
+				volumes.set(2, volume);
+			},
+			StreamType::Source | StreamType::SourceOutput => {
+				volumes.set_len(1);
+				volumes.set(1, volume);
+			}
+		};
+
 		let mut introspect = self.context.borrow().introspect();
 		
 		match t {
