@@ -6,20 +6,19 @@ use gio::prelude::*;
 mod meter;
 mod about;
 mod shared;
-mod pulse_data;
 mod pulse_controller;
 
-use meter::*;
+use meter::Meter;
 use shared::Shared;
 use pulse_controller::*;
 
 struct Meters {
-	pub sink: OutputMeter,
-	pub sink_inputs: HashMap<u32, OutputMeter>,
+	pub sink: Meter,
+	pub sink_inputs: HashMap<u32, Meter>,
 	pub sink_inputs_box: gtk::Box,
 	
-	pub source: InputMeter,
-	pub source_outputs: HashMap<u32, InputMeter>,
+	pub source: Meter,
+	pub source_outputs: HashMap<u32, Meter>,
 	pub source_outputs_box: gtk::Box,
 
 	pub show_visualizers: bool
@@ -27,11 +26,11 @@ struct Meters {
 
 impl Meters {
 	pub fn new() -> Self {
-		let sink = OutputMeter::new();
+		let sink = Meter::new();
 		sink.widget.get_style_context().add_class("outer");
 		sink.widget.get_style_context().add_class("bordered");
 
-		let source = InputMeter::new();
+		let source = Meter::new();
 		source.widget.get_style_context().add_class("outer");
 		source.widget.get_style_context().add_class("bordered");
 
@@ -49,10 +48,10 @@ impl Meters {
 		self.show_visualizers = !self.show_visualizers;
 		if self.show_visualizers { return true; }
 
-		self.sink.set_visualizer(None);
-		self.source.set_visualizer(None);
-		for (_, input) in self.sink_inputs.iter_mut() { input.set_visualizer(None); }
-		for (_, output) in self.source_outputs.iter_mut() { output.set_visualizer(None); }
+		// self.sink.set_visualizer(None);
+		// self.source.set_visualizer(None);
+		// for (_, input) in self.sink_inputs.iter_mut() { input.set_visualizer(None); }
+		// for (_, output) in self.source_outputs.iter_mut() { output.set_visualizer(None); }
 
 		false
 	}
@@ -164,19 +163,11 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 	// Window Contents
 	{
 		let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-		let sink_meter = &meters_shr.borrow().sink;
-
-		let pulse = pulse_shr.clone();
-		sink_meter.widgets.scale.connect_change_value(move |_, _, value| {
-			pulse.borrow_mut().set_volume(StreamType::Sink, 0, value as u32);
-			gtk::Inhibit(false)
-		});
-
-		let pulse = pulse_shr.clone();
-		sink_meter.widgets.status.connect_clicked(move |status| {
-			pulse.borrow_mut().set_muted(StreamType::Sink, 0,
-				!status.get_style_context().has_class("muted"));
-		});
+		{
+			let sink_meter = &mut meters_shr.borrow_mut().sink;
+			// sink_meter.connect(StreamType::Sink, 0, &pulse_shr);
+			// sink_meter.set_options(Some(&[ "Hello", "World", "This", "Is", "Here" ]), |_|());
+		}
 
 		output.pack_start(&meters_shr.borrow().sink.widget, false, false, 0);
 		output.set_border_width(4);
@@ -189,18 +180,7 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 
 		let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		let source_meter = &meters_shr.borrow().source;
-
-		let pulse = pulse_shr.clone();
-		source_meter.widgets.scale.connect_change_value(move |_, _, value| {
-			pulse.borrow_mut().set_volume(StreamType::Source, 0, value as u32);
-			gtk::Inhibit(false)
-		});
-
-		let pulse = pulse_shr.clone();
-		source_meter.widgets.status.connect_clicked(move |status| {
-			pulse.borrow_mut().set_muted(StreamType::Source, 0,
-				!status.get_style_context().has_class("muted"));
-		});
+		// source_meter.connect(StreamType::Source, 0, &pulse_shr);
 
 		input.pack_start(&source_meter.widget, false, false, 0);
 		input.set_border_width(4);
@@ -257,39 +237,17 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 
 		if let Some(sink_pair) = pulse.sinks.iter().next() {
 			let sink = sink_pair.1;
-			meters.sink.set_name_and_icon(sink.data.description.as_str(), "audio-headphones");
-			meters.sink.set_volume_and_muted(sink.data.volume, sink.data.muted);
-			if show { meters.sink.set_visualizer(Some(sink.peak)); }
+			meters.sink.set_data(&sink.data);
+			if show { meters.sink.set_peak(Some(sink.peak)); }
 		}
 
 		for (index, input) in pulse.sink_inputs.iter() {
 			let sink_inputs_box = meters.sink_inputs_box.clone();
 
-			let meter = meters.sink_inputs.entry(*index).or_insert_with(|| {
-				let s = OutputMeter::new();
-				let index: u32 = *index;
-
-				let pulse = pulse_shr.clone();
-				s.widgets.scale.connect_change_value(move |_, _, value| {
-					pulse.borrow_mut().set_volume(StreamType::SinkInput, index, value as u32);
-					gtk::Inhibit(false)
-				});
-
-				let pulse = pulse_shr.clone();
-				s.widgets.status.connect_clicked(move |status| {
-					pulse.borrow_mut().set_muted(StreamType::SinkInput, index,
-						!status.get_style_context().has_class("muted"));
-				});
-				s
-			});
-
-			meter.set_name_and_icon(input.data.name.as_str(), input.data.icon.as_str());
-			meter.set_volume_and_muted(input.data.volume, input.data.muted);
-			if show { meter.set_visualizer(Some(input.peak)); }
-			
-			if meter.widget.get_parent().is_none() {
-				sink_inputs_box.pack_start(&meter.widget, false, false, 0);
-			}
+			let meter = meters.sink_inputs.entry(*index).or_insert_with(|| Meter::with_connection(&input.data, &pulse_shr));
+			if meter.widget.get_parent().is_none() { sink_inputs_box.pack_start(&meter.widget, false, false, 0); }
+			meter.set_data(&input.data);
+			if show { meter.set_peak(Some(input.peak)); }
 		}
 
 		let sink_inputs_box = meters.sink_inputs_box.clone();
@@ -301,38 +259,17 @@ fn update(pulse_shr: &Shared<PulseController>, meters_shr: &Shared<Meters>) {
 
 		if let Some(source_pair) = pulse.sources.iter().next() {
 			let source = source_pair.1;
-			meters.source.set_name_and_icon(source.data.description.as_str(), "audio-headphones");
-			meters.source.set_volume_and_muted(source.data.volume, source.data.muted);
-			if show { meters.source.set_visualizer(Some(source.peak)); }
+			meters.source.set_data(&source.data);
+			if show { meters.source.set_peak(Some(source.peak)); }
 		}
 
 		for (index, output) in pulse.source_outputs.iter() {
 			let source_outputs_box = meters.source_outputs_box.clone();
 			
-			let meter = meters.source_outputs.entry(*index).or_insert_with(|| {
-				let s = InputMeter::new();
-				let index: u32 = *index;
-
-				let pulse = pulse_shr.clone();
-				s.widgets.scale.connect_change_value(move |_, _, value| {
-					pulse.borrow_mut().set_volume(StreamType::SourceOutput, index, value as u32);
-					gtk::Inhibit(false)
-				});
-
-				let pulse = pulse_shr.clone();
-				s.widgets.status.connect_clicked(move |status| {
-					pulse.borrow_mut().set_muted(StreamType::SourceOutput, index,
-						!status.get_style_context().has_class("muted"));
-				});
-				s
-			});
-			meter.set_name_and_icon(output.data.name.as_str(), output.data.icon.as_str());
-			meter.set_volume_and_muted(output.data.volume, output.data.muted);
-			if show { meter.set_visualizer(Some(output.peak)); }
-
-			if meter.widget.get_parent().is_none() {
-				source_outputs_box.pack_start(&meter.widget, false, false, 0);
-			}
+			let meter = meters.source_outputs.entry(*index).or_insert_with(|| Meter::with_connection(&output.data, &pulse_shr));
+			if meter.widget.get_parent().is_none() { source_outputs_box.pack_start(&meter.widget, false, false, 0); }
+			meter.set_data(&output.data);
+			if show { meter.set_peak(Some(output.peak)); }
 		}
 
 		let source_outputs_box = meters.source_outputs_box.clone();

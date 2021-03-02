@@ -74,11 +74,23 @@ Value should be dynamically determined later. */
 	padding: 0 4px;
 }
 
+#meter #app_select {
+	padding: 0;
+	margin: -1px 4px;
+}
+
+#meter #app_select #app_label {
+	padding: 0;
+}
+
 /* Styles for the Mute indicator button. */
 
 #meter #mute_toggle image {
 	margin-top: 1px;
-	margin-right: 4px;
+}
+
+#meter #mute_toggle label {
+	margin-left: 4px;
 }
 
 #meter #mute_toggle.muted {
