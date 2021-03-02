@@ -414,29 +414,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libpulse-glib-binding"
-version = "2.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830bc64de094b77e5dc9ee1f6ad885960aac3c01963ae59d0bf3af804c29a8b5"
-dependencies = [
- "glib",
- "glib-sys",
- "libpulse-binding",
- "libpulse-mainloop-glib-sys",
-]
-
-[[package]]
-name = "libpulse-mainloop-glib-sys"
-version = "1.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95ada288e2969194b25a940394fd38a07a229d36467530f1bf8bcd3a410a1006"
-dependencies = [
- "glib-sys",
- "libpulse-sys",
- "pkg-config",
-]
-
-[[package]]
 name = "libpulse-sys"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -464,7 +441,6 @@ dependencies = [
  "glib",
  "gtk",
  "libpulse-binding",
- "libpulse-glib-binding",
  "pango",
  "slice_as_array",
 ]

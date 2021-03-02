@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use gtk::prelude::*;
 use gio::prelude::*;
 
-mod pulse;
 mod meter;
 mod about;
 mod shared;
 mod pulse_data;
+mod pulse_controller;
 
 use meter::*;
-use crate::pulse::*;
 use shared::Shared;
+use pulse_controller::*;
 
 struct Meters {
 	pub sink: OutputMeter,

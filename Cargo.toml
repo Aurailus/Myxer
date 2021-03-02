@@ -16,10 +16,6 @@ slice_as_array = "1.1.0"
 version = "2.23.0"
 package = "libpulse-binding"
 
-[dependencies.pulse_glib]
-version = "2.23.0"
-package = "libpulse-glib-binding"
-
 [dependencies.gtk]
 version = "0.9.0"
 features = [ "v3_22" ]
