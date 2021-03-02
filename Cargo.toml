@@ -10,6 +10,7 @@ edition = "2018"
 gdk = "0.13.2"
 glib = "0.10.3"
 pango = "0.9.1"
+colorsys = "0.6.3"
 slice_as_array = "1.1.0"
 
 [dependencies.pulse]

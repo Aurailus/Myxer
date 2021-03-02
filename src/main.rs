@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use gtk::prelude::*;
 use gio::prelude::*;
 
+mod style;
 mod meter;
 mod about;
 mod shared;
@@ -90,12 +91,7 @@ fn activate(app: &gtk::Application, pulse_shr: Shared<PulseController>) {
 		};
 
 		window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
-
-		let style = include_str!("./style.css");
-		let provider = gtk::CssProvider::new();
-		provider.load_from_data(style.as_bytes()).expect("Failed to load CSS.");
-		gtk::StyleContext::add_provider_for_screen(&gdk::Screen::get_default().expect("Error initializing GTK css provider."),
-			&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+		style::style(&window);
 
 		let stack_switcher = gtk::StackSwitcher::new();
 		stack_switcher.set_stack(Some(&stack));

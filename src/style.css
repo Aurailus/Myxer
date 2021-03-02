@@ -1,11 +1,7 @@
-@define-color border-color @bg_color;
+@define-color border_color darker(@background_color);
 
 .title {
 	padding-left: 4px;
-}
-
-window {
-	background-color: #404552;
 }
 
 headerbar box:last-child {
@@ -40,22 +36,24 @@ notebook {
 /* Apply a border to select elements. */
 
 .bordered {
-	border: 1px solid @border-color;
+	border: 1px solid @border_color;
 }
 
 scrollbar {
-	border-color: @border-color;
+	border-color: @border_color;
 }
 
 /* At some point, figure out how to replace
 the hardcoded values with theme colors. */
 
 #meter scale.visualizer trough highlight {
-	background-color: alpha(rgb(82, 148, 226), 0.4);
+	background: none;
+	background-color: alpha(@scale_color, 0.4);
 }
 
 #meter scale.visualizer trough fill {
-	background-color: alpha(rgb(82, 148, 226), 1);
+	background: none;
+	background-color: alpha(@scale_color, 1);
 }
 
 #meter {
@@ -94,11 +92,11 @@ Value should be dynamically determined later. */
 }
 
 #meter #mute_toggle.muted {
-	border-color: @bg_color;
+	border-color: @border_color;
 }
 
 #meter #mute_toggle.muted {
-	color: alpha(@fg_color, 0.4);
+	color: alpha(@foreground_color, 0.4);
 }
 
 /* Hide the weird dotted lines on the
@@ -107,37 +105,3 @@ sides of the scroll container. */
 undershoot {
 	background: none;
 }
-
-/* Button groups: Remove borders, adjust padding,
-de-emphasize non-important interactions.
-TRY USING .linked ON THE PARENT BOX BEFORE USING THIS */
-
-/*.button_group {
-	margin: 0px 4px;
-}
-
-.button_group button {
-	padding: 2px 2px;
-}
-
-.button_group button:first-child image, .button_group button:last-child image {
-	opacity: 0.5;
-}
-
-.button_group button:first-child {
-	border-right: none;
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-}
-
-.button_group button:nth-child(2) {
-	border-left: none;
-	border-right: none;
-	border-radius: 0;
-}
-
-.button_group button:last-child {
-	border-left: none;
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-}*/
