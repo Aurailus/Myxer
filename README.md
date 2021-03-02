@@ -2,7 +2,7 @@
 A modern Volume Mixer for PulseAudio, built using Rust.
 
 ## Developing
-Just use `cargo run`, ( or `./nodemon` if you have it installed), that's it. 
+Just use `cargo run`, (or `nodemon ./`, if you have that installed) in the root directory, that's it. 
 
 ## Building
 Use `cargo build --release` in the root directory.
