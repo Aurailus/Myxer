@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Install Dependencies
+      run: sudo apt install libpango1.0-dev
     - name: Build
       run: cargo build --verbose --release
     - name: Compress build files
