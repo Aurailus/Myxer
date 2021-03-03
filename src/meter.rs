@@ -2,6 +2,7 @@ use gtk;
 use gtk::prelude::*;
 use glib::translate::ToGlib;
 use glib::translate::FromGlib;
+use pulse::volume::{ ChannelVolumes, Volume };
 
 use crate::shared::Shared;
 use crate::pulse_controller::{ PulseController, StreamType };
@@ -24,7 +25,7 @@ pub struct MeterData {
 	pub name: String,
 	pub icon: Option<String>,
 
-	pub volume: u32,
+	pub volume: ChannelVolumes,
 	pub muted: bool,
 }
 
@@ -34,9 +35,26 @@ struct MeterWidgets {
 	icon: gtk::Image,
 	label: gtk::Label,
 	select: gtk::Button,
-	scale: gtk::Scale,
+	scale_box: gtk::Box,
+	scales: Vec<gtk::Scale>,
 	status: gtk::Button,
 	status_icon: gtk::Image
+}
+
+fn build_scale() -> gtk::Scale {
+	let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, MAX_SCALE_VOL as f64, SCALE_STEP);
+
+	scale.set_inverted(true);
+	scale.set_draw_value(false);
+	scale.set_sensitive(false);
+	scale.set_increments(SCALE_STEP, SCALE_STEP);
+	scale.set_restrict_to_fill_level(false);
+
+	scale.add_mark(0.0, gtk::PositionType::Right, Some(""));
+	scale.add_mark(MAX_SCALE_VOL as f64, gtk::PositionType::Right, Some(""));
+	scale.add_mark(MAX_NATURAL_VOL as f64, gtk::PositionType::Right, Some(""));
+
+	scale
 }
 
 fn build() -> MeterWidgets {
@@ -64,18 +82,10 @@ fn build() -> MeterWidgets {
 	select.set_widget_name("app_select");
 	select.get_style_context().add_class("flat");
 
-	let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, MAX_SCALE_VOL as f64, SCALE_STEP);
-	scale.get_style_context().add_class("visualizer");
-
-	scale.set_inverted(true);
-	scale.set_draw_value(false);
-	scale.set_sensitive(false);
-	scale.set_increments(SCALE_STEP, SCALE_STEP);
-	scale.set_restrict_to_fill_level(false);
-
-	scale.add_mark(0.0, gtk::PositionType::Right, Some(""));
-	scale.add_mark(MAX_SCALE_VOL as f64, gtk::PositionType::Right, Some(""));
-	scale.add_mark(MAX_NATURAL_VOL as f64, gtk::PositionType::Right, Some(""));
+	let scale_box_o = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	let scale_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+	scale_box_o.pack_start(&scale_box, true, false, 0);
+	let scales = Vec::new();
 
 	let status_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
@@ -91,7 +101,7 @@ fn build() -> MeterWidgets {
 	status.get_style_context().add_class("muted");
 
 	root.pack_end(&status_box, false, false, 4);
-	root.pack_end(&scale, true, true, 2);
+	root.pack_end(&scale_box_o, true, true, 2);
 	root.pack_end(&label, false, true, 0);
 	root.pack_end(&icon, false, false, 4);
 
@@ -100,7 +110,8 @@ fn build() -> MeterWidgets {
 		icon,
 		label,
 		select,
-		scale,
+		scale_box,
+		scales,
 		status,
 		status_icon
 	}
@@ -109,64 +120,128 @@ fn build() -> MeterWidgets {
 pub struct Meter {
 	pub widget: gtk::Box,
 	widgets: MeterWidgets,
+	separate: bool,
 
 	data: MeterData,
 	peak: Option<u32>,
 
-	scale_connect_id: Option<glib::signal::SignalHandlerId>,
-	status_connect_id: Option<glib::signal::SignalHandlerId>
+	pulse: Option<Shared<PulseController>>,
+	status_connect_id: Option<glib::signal::SignalHandlerId>,
 }
 
 impl Meter {
-	pub fn new() -> Self {
+	pub fn new(pulse: Option<Shared<PulseController>>) -> Self {
 		let widgets = build();
-		Self { widget: widgets.root.clone(), widgets, data: MeterData::default(),
-			peak: Some(0), scale_connect_id: None, status_connect_id: None }
+		Self {
+			widget: widgets.root.clone(),
+			widgets, data: MeterData::default(),
+			pulse,
+			separate: false,
+			peak: Some(0),
+			status_connect_id: None
+		}
 	}
 
-	pub fn with_connection(data: &MeterData, pulse_shr: &Shared<PulseController>) -> Self {
-		let mut s = Meter::new();
-		s.data.t = data.t;
-		s.data.index = data.index;
-		s.connect(pulse_shr);
-		s
+	pub fn set_separate_channels(&mut self, separate: bool) {
+		self.separate = separate;
+		self.reset_connection();
+	}
+
+	pub fn set_connection(&mut self, pulse: Option<Shared<PulseController>>) {
+		self.pulse = pulse;
+		self.reset_connection();
 	}
 
 	pub fn is_connected(&self) -> bool {
-		self.scale_connect_id.is_some()
+		self.pulse.is_some()
 	}
 
-	pub fn connect(&mut self, pulse_shr: &Shared<PulseController>) {
+	fn reset_connection(&mut self) {
 		self.disconnect();
+		if self.pulse.is_none() { return; }
 
-		let pulse = pulse_shr.clone();
 		let t = self.data.t;
 		let index = self.data.index;
 
-		self.scale_connect_id = Some(self.widgets.scale.connect_change_value(move |_, _, value| {
-			pulse.borrow_mut().set_volume(t, index, value as u32);
-			gtk::Inhibit(false)
-		}));
-
-		let pulse = pulse_shr.clone();
+		let pulse = self.pulse.as_ref().unwrap().clone();
 		self.status_connect_id = Some(self.widgets.status.connect_clicked(move |status| {
 			pulse.borrow_mut().set_muted(t, index,
 				!status.get_style_context().has_class("muted"));
 		}));
+
+		if self.separate {
+			for _ in 0 .. self.data.volume.len() {
+				let scale = build_scale();
+				let pulse = self.pulse.as_ref().unwrap().clone();
+				scale.connect_change_value(move |scale, _, val| {
+
+					let parent = scale.get_parent().unwrap().downcast::<gtk::Box>().unwrap();
+					let children = parent.get_children();
+					
+					let mut volumes = ChannelVolumes::default();
+					
+					// So, if you're wondering why rev() is necessary or why I set the len after or why this is horrible in general,
+					// Check out libpulse_binding::volumes::ChannelVolumes::set, and you'll see ._.
+					for (i, w) in children.iter().enumerate().rev() {
+						let s = w.clone().downcast::<gtk::Scale>().unwrap();
+						let value = if *scale == s { val } else { s.get_value() };
+						let volume = Volume(value as u32);
+						volumes.set(i as u8 + 1, volume);
+					}
+
+					volumes.set_len(children.len() as u8);
+
+					pulse.borrow_mut().set_volume(t, index, volumes);
+					gtk::Inhibit(false)
+				});
+				self.widgets.scale_box.pack_start(&scale, false, false, 0);
+				self.widgets.scales.push(scale);
+			}
+		}
+		else {
+			let scale = build_scale();
+			let channels = self.data.volume.len();
+			let pulse = self.pulse.as_ref().unwrap().clone();
+			scale.connect_change_value(move |_, _, value| {
+				let mut volumes = ChannelVolumes::default();
+				volumes.set_len(channels);
+				volumes.set(channels, Volume(value as u32));
+				pulse.borrow_mut().set_volume(t, index, volumes);
+				gtk::Inhibit(false)
+			});
+			self.widgets.scale_box.pack_start(&scale, false, false, 0);
+			self.widgets.scales.push(scale);
+		}
+
+		for (i, v) in self.data.volume.get().iter().enumerate() {
+			if let Some(scale) = self.widgets.scales.get(i) {
+				scale.set_sensitive(!self.data.muted);
+				scale.set_value(v.0 as f64);
+				if self.peak.is_some() { scale.get_style_context().add_class("visualizer") }
+			}
+		}
+
+		self.widgets.scale_box.show_all();
 	}
 
-	pub fn disconnect(&mut self) {
-		if self.scale_connect_id.is_some() {
-			self.widgets.scale.disconnect(glib::signal::SignalHandlerId::from_glib(self.scale_connect_id.as_ref().unwrap().to_glib()));
+	fn disconnect(&mut self) {
+		if self.status_connect_id.is_some() {
 			self.widgets.status.disconnect(glib::signal::SignalHandlerId::from_glib(self.status_connect_id.as_ref().unwrap().to_glib()));
-			self.scale_connect_id = None;
-			self.status_connect_id = None;
 		}
+		for s in self.widgets.scales.iter() { self.widgets.scale_box.remove(s); }
+		self.widgets.scales.clear();
 	}
 
 	pub fn set_data(&mut self, data: &MeterData) {
-		self.data.t = data.t;
-		self.data.index = data.index;
+		let volume_old = self.data.volume;
+		let volume_changed = data.volume != volume_old;
+
+		if self.pulse.is_some() && (data.t != self.data.t || data.index != self.data.index || data.volume.len() != self.data.volume.len()) {
+			self.data.t = data.t;
+			self.data.volume = data.volume;
+			self.data.index = data.index;
+			self.reset_connection();
+		}
 
 		if data.icon != self.data.icon {
 			self.data.icon = data.icon.clone();
@@ -179,21 +254,27 @@ impl Meter {
 			self.widgets.label.set_label(self.data.name.as_str());
 		}
 
-		if data.volume != self.data.volume || data.muted != self.data.muted {
+		if volume_changed || data.muted != self.data.muted {
 			self.data.volume = data.volume;
 			self.data.muted = data.muted;
-			
-			self.widgets.scale.set_sensitive(!self.data.muted);
-			self.widgets.scale.set_value(self.data.volume as f64);
+
+			for (i, v) in self.data.volume.get().iter().enumerate() {
+				if let Some(scale) = self.widgets.scales.get(i) {
+					scale.set_sensitive(!self.data.muted);
+					scale.set_value(v.0 as f64);
+				}
+			}
+
+			let status_vol = self.data.volume.max().0;
 
 			let &icons = if self.data.t == StreamType::Sink || self.data.t == StreamType::SinkInput
 				{ &OUTPUT_ICONS } else { &INPUT_ICONS };
 
 			self.widgets.status_icon.set_from_icon_name(Some(icons[
-				if self.data.muted { 0 } else if self.data.volume >= MAX_NATURAL_VOL { 3 }
-				else if self.data.volume >= MAX_NATURAL_VOL / 2 { 2 } else { 1 }]), gtk::IconSize::Button);
+				if self.data.muted { 0 } else if status_vol >= MAX_NATURAL_VOL { 3 }
+				else if status_vol >= MAX_NATURAL_VOL / 2 { 2 } else { 1 }]), gtk::IconSize::Button);
 
-			let mut vol_scaled = ((self.data.volume as f64) / MAX_NATURAL_VOL as f64 * 100.0).round() as u8;
+			let mut vol_scaled = ((status_vol as f64) / MAX_NATURAL_VOL as f64 * 100.0).round() as u8;
 			if vol_scaled > 150 { vol_scaled = 150 }
 
 			let mut string = vol_scaled.to_string();
@@ -211,14 +292,18 @@ impl Meter {
 			self.peak = peak;
 
 			if self.peak.is_some() {
-				let peak_scaled = self.peak.unwrap() as f64 * (self.data.volume as f64 / MAX_SCALE_VOL as f64);
-				self.widgets.scale.set_fill_level(peak_scaled as f64);
-				self.widgets.scale.set_show_fill_level(!self.data.muted && peak_scaled > 0.5);
-				self.widgets.scale.get_style_context().add_class("visualizer");
+				for (i, s) in self.widgets.scales.iter().enumerate() {
+					let peak_scaled = self.peak.unwrap() as f64 * (self.data.volume.get()[i].0 as f64 / MAX_SCALE_VOL as f64);
+					s.set_fill_level(peak_scaled as f64);
+					s.set_show_fill_level(!self.data.muted && peak_scaled > 0.5);
+					s.get_style_context().add_class("visualizer");
+				}
 			}
 			else {
-				self.widgets.scale.set_show_fill_level(false);
-				self.widgets.scale.get_style_context().remove_class("visualizer");
+				for s in self.widgets.scales.iter() {
+					s.set_show_fill_level(false);
+					s.get_style_context().remove_class("visualizer");
+				}
 			}
 		}
 	}

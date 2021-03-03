@@ -20,16 +20,17 @@ struct Meters {
 	pub source_outputs: HashMap<u32, Meter>,
 	pub source_outputs_box: gtk::Box,
 
-	pub show_visualizers: bool
+	pub show_visualizers: bool,
+	pub separate_channels: bool
 }
 
 impl Meters {
 	pub fn new() -> Self {
-		let sink = Meter::new();
+		let sink = Meter::new(None);
 		sink.widget.get_style_context().add_class("outer");
 		sink.widget.get_style_context().add_class("bordered");
 
-		let source = Meter::new();
+		let source = Meter::new(None);
 		source.widget.get_style_context().add_class("outer");
 		source.widget.get_style_context().add_class("bordered");
 
@@ -37,6 +38,7 @@ impl Meters {
 			sink, source,
 			active_sink: None, active_source: None,
 			show_visualizers: true,
+			separate_channels: false,
 			sink_inputs: HashMap::new(),
 			sink_inputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
 			source_outputs: HashMap::new(),
@@ -50,19 +52,28 @@ impl Meters {
 
 		self.sink.set_peak(None);
 		self.source.set_peak(None);
-		for (_, input) in self.sink_inputs.iter_mut() { input.set_peak(None); }
-		for (_, output) in self.source_outputs.iter_mut() { output.set_peak(None); }
+		for (_, input) in self.sink_inputs.iter_mut() { input.set_peak(None) }
+		for (_, output) in self.source_outputs.iter_mut() { output.set_peak(None) }
 
 		false
 	}
 
+	fn toggle_separate_channels(&mut self) -> bool {
+		self.separate_channels = !self.separate_channels;
+		self.sink.set_separate_channels(self.separate_channels);
+		self.source.set_separate_channels(self.separate_channels);
+		for (_, input) in self.sink_inputs.iter_mut() { input.set_separate_channels(self.separate_channels) }
+		for (_, output) in self.source_outputs.iter_mut() { output.set_separate_channels(self.separate_channels) }
+		self.separate_channels
+	}
+
 	fn set_active_source(&mut self, ind: u32) {
-		self.source.disconnect();
+		self.source.set_connection(None);
 		self.active_source = Some(ind);
 	}
 
 	fn set_active_sink(&mut self, ind: u32) {
-		self.sink.disconnect();
+		self.sink.set_connection(None);
 		self.active_sink = Some(ind);
 	}
 }
@@ -128,7 +139,7 @@ impl Myxer {
 			prefs.add(&prefs_box);
 
 			let show_visualizers = gtk::ModelButton::new();
-			show_visualizers.set_property_text(Some("Show Visualizers"));
+			show_visualizers.set_property_text(Some("Visualize Peaks"));
 			show_visualizers.set_action_name(Some("app.show_visualizers"));
 			prefs_box.add(&show_visualizers);
 
@@ -268,13 +279,14 @@ impl Myxer {
 			about.connect_activate(|_, _| about::about());
 			actions.add_action(&about);
 
+			let meters_clone = meters.clone();
 			let split_channels = gio::SimpleAction::new_stateful("split_channels", glib::VariantTy::new("bool").ok(), &false.to_variant());
-			// split_channels.connect_activate(|_, _| show_about());
+			split_channels.connect_activate(move |s, _| s.set_state(&meters_clone.borrow_mut().toggle_separate_channels().to_variant()));
 			actions.add_action(&split_channels);
 
-			let meters = meters.clone();
+			let meters_clone = meters.clone();
 			let show_visualizers = gio::SimpleAction::new_stateful("show_visualizers", glib::VariantTy::new("bool").ok(), &true.to_variant());
-			show_visualizers.connect_activate(move |s, _| s.set_state(&meters.borrow_mut().toggle_visualizers().to_variant()));
+			show_visualizers.connect_activate(move |s, _| s.set_state(&meters_clone.borrow_mut().toggle_visualizers().to_variant()));
 			actions.add_action(&show_visualizers);
 		}
 
@@ -299,15 +311,15 @@ impl Myxer {
 			}
 			if meters.active_sink.is_some() {
 				let sink = &pulse.sinks.get(&meters.active_sink.unwrap()).unwrap();
+				if !meters.sink.is_connected() { meters.sink.set_connection(Some(self.pulse.clone())); }
 				meters.sink.set_data(&sink.data);
-				if !meters.sink.is_connected() { meters.sink.connect(&self.pulse); }
 				if show { meters.sink.set_peak(Some(sink.peak)); }
 			}
 
 			for (index, input) in pulse.sink_inputs.iter() {
 				let sink_inputs_box = meters.sink_inputs_box.clone();
 
-				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| Meter::with_connection(&input.data, &self.pulse));
+				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| Meter::new(Some(self.pulse.clone())));
 				if meter.widget.get_parent().is_none() { sink_inputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&input.data);
 				if show { meter.set_peak(Some(input.peak)); }
@@ -327,15 +339,15 @@ impl Myxer {
 			}
 			if meters.active_source.is_some() {
 				let source = &pulse.sources.get(&meters.active_source.unwrap()).unwrap();
+				if !meters.source.is_connected() { meters.source.set_connection(Some(self.pulse.clone())); }
 				meters.source.set_data(&source.data);
-				if !meters.source.is_connected() { meters.source.connect(&self.pulse); }
 				if show { meters.source.set_peak(Some(source.peak)); }
 			}
 
 			for (index, output) in pulse.source_outputs.iter() {
 				let source_outputs_box = meters.source_outputs_box.clone();
 				
-				let meter = meters.source_outputs.entry(*index).or_insert_with(|| Meter::with_connection(&output.data, &self.pulse));
+				let meter = meters.source_outputs.entry(*index).or_insert_with(|| Meter::new(Some(self.pulse.clone())));
 				if meter.widget.get_parent().is_none() { source_outputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&output.data);
 				if show { meter.set_peak(Some(output.peak)); }

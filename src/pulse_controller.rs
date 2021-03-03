@@ -3,9 +3,9 @@ use slice_as_array::{ slice_as_array, slice_as_array_transmute };
 use pulse::def::BufferAttr;
 use pulse::proplist::Proplist;
 use pulse::callbacks::ListResult;
+use pulse::volume::ChannelVolumes;
 use pulse::sample::{ Spec, Format };
 use pulse::mainloop::threaded::Mainloop;
-use pulse::volume::{ ChannelVolumes, Volume };
 use pulse::context::{ Context, FlagSet as CtxFlagSet };
 use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
 use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
@@ -169,13 +169,13 @@ impl PulseController {
 	 * @param {u32} vol - The desired volume.
 	 */
 
-	pub fn set_volume(&self, t: StreamType, index: u32, vol: u32) {
-		let channels = if t == StreamType::Sink || t == StreamType::SinkInput { 2 } else { 1 };
-		let mut volumes = ChannelVolumes::default();
-		let volume = Volume(vol);
+	pub fn set_volume(&self, t: StreamType, index: u32, volumes: ChannelVolumes) {
+		// let channels = if t == StreamType::Sink || t == StreamType::SinkInput { 2 } else { 1 };
+		// let mut volumes = ChannelVolumes::default();
+		// let volume = Volume(vol);
 	
-		volumes.set_len(channels);
-		volumes.set(channels, volume);
+		// volumes.set_len(channels);
+		// volumes.set(channels, volume);
 
 		let mut introspect = self.context.borrow().introspect();
 		
@@ -220,8 +220,8 @@ impl PulseController {
 						t: StreamType::Sink,
 						index: item.index,
 						icon: Some("multimedia-volume-control".to_owned()),
-						name: item.description.clone().unwrap().into_owned(),
-						volume: item.volume.avg().0,
+						name: item.active_port.as_ref().unwrap().description.clone().unwrap().into_owned(),
+						volume: item.volume,
 						muted: item.mute
 					},
 					monitor_index: item.monitor_source
@@ -237,7 +237,7 @@ impl PulseController {
 						index: item.index,
 						icon: Some(item.proplist.get_str("application.icon_name").unwrap_or("audio-card".to_owned())),
 						name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
-						volume: item.volume.avg().0,
+						volume: item.volume,
 						muted: item.mute
 					},
 					monitor_index: item.sink
@@ -247,13 +247,15 @@ impl PulseController {
 
 		fn tx_source(tx: &Sender<TxMessage>, result: ListResult<&SourceInfo<'_>>) {
 			if let ListResult::Item(item) = result {
+				let name = item.name.clone().unwrap().into_owned();
+				if name.ends_with(".monitor") { return; }
 				tx.send(TxMessage::Update(StreamType::Source, TxData {
 					data: MeterData {
 						t: StreamType::Source,
 						index: item.index,
 						icon: Some("audio-input-microphone".to_owned()),
 						name: item.description.clone().unwrap().into_owned(),
-						volume: item.volume.avg().0,
+						volume: item.volume,
 						muted: item.mute
 					},
 					monitor_index: item.index
@@ -271,7 +273,7 @@ impl PulseController {
 						index: item.index,
 						icon: Some(item.proplist.get_str("application.icon_name").unwrap_or("audio-card".to_owned())),
 						name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
-						volume: item.volume.avg().0,
+						volume: item.volume,
 						muted: item.mute
 					},
 					monitor_index: item.source
