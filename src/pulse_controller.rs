@@ -219,7 +219,7 @@ impl PulseController {
 					data: MeterData {
 						t: StreamType::Sink,
 						index: item.index,
-						icon: None,
+						icon: Some("multimedia-volume-control".to_owned()),
 						name: item.description.clone().unwrap().into_owned(),
 						volume: item.volume.avg().0,
 						muted: item.mute
@@ -251,7 +251,7 @@ impl PulseController {
 					data: MeterData {
 						t: StreamType::Source,
 						index: item.index,
-						icon: None,
+						icon: Some("audio-input-microphone".to_owned()),
 						name: item.description.clone().unwrap().into_owned(),
 						volume: item.volume.avg().0,
 						muted: item.mute
