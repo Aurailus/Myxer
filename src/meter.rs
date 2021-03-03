@@ -1,5 +1,7 @@
 use gtk;
 use gtk::prelude::*;
+use glib::translate::ToGlib;
+use glib::translate::FromGlib;
 
 use crate::shared::Shared;
 use crate::pulse_controller::{ PulseController, StreamType };
@@ -14,9 +16,7 @@ const INPUT_ICONS: [&str; 4] = [ "microphone-sensitivity-muted-symbolic", "micro
 const OUTPUT_ICONS: [&str; 4] = [ "audio-volume-muted-symbolic", "audio-volume-low-symbolic",
 	"audio-volume-medium-symbolic", "audio-volume-high-symbolic" ];
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MeterData {
 	pub t: StreamType,
 	pub index: u32,
@@ -34,7 +34,6 @@ struct MeterWidgets {
 	icon: gtk::Image,
 	label: gtk::Label,
 	select: gtk::Button,
-	popover_box: gtk::Box,
 	scale: gtk::Scale,
 	status: gtk::Button,
 	status_icon: gtk::Image
@@ -65,15 +64,6 @@ fn build() -> MeterWidgets {
 	select.set_widget_name("app_select");
 	select.get_style_context().add_class("flat");
 
-	let select_popover = gtk::Popover::new(Some(&select));
-	select_popover.set_border_width(4);
-
-	let select_popover_clone = select_popover.clone();
-	select.connect_clicked(move |_| select_popover_clone.popup());
-
-	let popover_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-	select_popover.add(&popover_box);
-
 	let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, MAX_SCALE_VOL as f64, SCALE_STEP);
 	scale.get_style_context().add_class("visualizer");
 
@@ -81,9 +71,6 @@ fn build() -> MeterWidgets {
 	scale.set_draw_value(false);
 	scale.set_sensitive(false);
 	scale.set_increments(SCALE_STEP, SCALE_STEP);
-
-	scale.set_fill_level(0.0);
-	scale.set_show_fill_level(true);
 	scale.set_restrict_to_fill_level(false);
 
 	scale.add_mark(0.0, gtk::PositionType::Right, Some(""));
@@ -113,7 +100,6 @@ fn build() -> MeterWidgets {
 		icon,
 		label,
 		select,
-		popover_box,
 		scale,
 		status,
 		status_icon
@@ -125,13 +111,17 @@ pub struct Meter {
 	widgets: MeterWidgets,
 
 	data: MeterData,
-	peak: Option<u32>
+	peak: Option<u32>,
+
+	scale_connect_id: Option<glib::signal::SignalHandlerId>,
+	status_connect_id: Option<glib::signal::SignalHandlerId>
 }
 
 impl Meter {
 	pub fn new() -> Self {
 		let widgets = build();
-		Self { widget: widgets.root.clone(), widgets, data: MeterData::default(), peak: Some(0) }
+		Self { widget: widgets.root.clone(), widgets, data: MeterData::default(),
+			peak: Some(0), scale_connect_id: None, status_connect_id: None }
 	}
 
 	pub fn with_connection(data: &MeterData, pulse_shr: &Shared<PulseController>) -> Self {
@@ -142,21 +132,36 @@ impl Meter {
 		s
 	}
 
-	pub fn connect(&self, pulse_shr: &Shared<PulseController>) {
+	pub fn is_connected(&self) -> bool {
+		self.scale_connect_id.is_some()
+	}
+
+	pub fn connect(&mut self, pulse_shr: &Shared<PulseController>) {
+		self.disconnect();
+
 		let pulse = pulse_shr.clone();
 		let t = self.data.t;
 		let index = self.data.index;
 
-		self.widgets.scale.connect_change_value(move |_, _, value| {
+		self.scale_connect_id = Some(self.widgets.scale.connect_change_value(move |_, _, value| {
 			pulse.borrow_mut().set_volume(t, index, value as u32);
 			gtk::Inhibit(false)
-		});
+		}));
 
 		let pulse = pulse_shr.clone();
-		self.widgets.status.connect_clicked(move |status| {
+		self.status_connect_id = Some(self.widgets.status.connect_clicked(move |status| {
 			pulse.borrow_mut().set_muted(t, index,
 				!status.get_style_context().has_class("muted"));
-		});
+		}));
+	}
+
+	pub fn disconnect(&mut self) {
+		if self.scale_connect_id.is_some() {
+			self.widgets.scale.disconnect(glib::signal::SignalHandlerId::from_glib(self.scale_connect_id.as_ref().unwrap().to_glib()));
+			self.widgets.status.disconnect(glib::signal::SignalHandlerId::from_glib(self.status_connect_id.as_ref().unwrap().to_glib()));
+			self.scale_connect_id = None;
+			self.status_connect_id = None;
+		}
 	}
 
 	pub fn set_data(&mut self, data: &MeterData) {
@@ -216,5 +221,16 @@ impl Meter {
 				self.widgets.scale.get_style_context().remove_class("visualizer");
 			}
 		}
+	}
+
+	pub fn connect_label_clicked<F: Fn(&gtk::Button) + 'static>(&mut self, f: F) {
+		self.widget.remove(&self.widgets.label);
+		self.widget.remove(&self.widgets.icon);
+
+		self.widgets.select.add(&self.widgets.label);
+		self.widgets.select.connect_clicked(f);
+
+		self.widget.pack_start(&self.widgets.icon, false, false, 4);
+		self.widget.pack_start(&self.widgets.select, false, false, 0);
 	}
 }

@@ -19,10 +19,7 @@ use crate::meter::MeterData;
 
 
 /** Represents a stream's underlying libpulse type. */
-#[derive(Copy)]
-#[derive(Clone)]
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum StreamType {
 	Sink, SinkInput, Source, SourceOutput
 }
@@ -89,15 +86,13 @@ impl PulseController {
 
 	pub fn new() -> Self {
 		let mut proplist = Proplist::new().unwrap();
-		proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "Myxer")
-			.expect("PulseController: Failed to set application name.");
+		proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "Myxer").unwrap();
 
-		let mainloop = Shared::new(Mainloop::new()
-			.expect("PulseController: Failed to initialize mainloop."));
+		let mainloop = Shared::new(Mainloop::new().expect("Failed to initialize pulse mainloop."));
 
 		let context = Shared::new(
 			Context::new_with_proplist(&*mainloop.borrow(), "Myxer Context", &proplist)
-			.expect("PulseController: Failed to initialize context."));
+			.expect("Failed to initialize pulse context."));
 
 		let ( tx, rx ) = channel::<TxMessage>();
 
@@ -137,10 +132,10 @@ impl PulseController {
 		})));
 
 		ctx.connect(None, CtxFlagSet::NOFLAGS, None)
-			.expect("PulseController: Failed to connect the context to server.");
+			.expect("Failed to connect to the pulse server.");
 
 		mainloop.lock();
-		mainloop.start().expect("PulseController: Failed to start mainloop.");
+		mainloop.start().expect("Failed to start pulse mainloop.");
 
 		loop {
 			match ctx.get_state() {
@@ -175,7 +170,6 @@ impl PulseController {
 	 */
 
 	pub fn set_volume(&self, t: StreamType, index: u32, vol: u32) {
-		println!("{:?} {} {}", t, index, vol);
 		let channels = if t == StreamType::Sink || t == StreamType::SinkInput { 2 } else { 1 };
 		let mut volumes = ChannelVolumes::default();
 		let volume = Volume(vol);
