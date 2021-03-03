@@ -9,8 +9,8 @@ headerbar box:last-child {
 }
 
 headerbar button#preferences.image-button {
-	border-radius: 50%;
-	margin-right: -8px;
+	border-radius: 16px;
+	margin-right: -6px;
 	padding: 0px;
 	margin-top: 8px;
 	margin-bottom: 8px;

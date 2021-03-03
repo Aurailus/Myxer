@@ -114,9 +114,11 @@ impl Myxer {
 			header.set_show_close_button(true);
 			header.set_custom_title(Some(&stack_switcher));
 
+			let title_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 			let title = gtk::Label::new(Some("Volume Mixer"));
 			title.get_style_context().add_class("title");
-			header.pack_start(&title);
+			title_box.pack_start(&title, true, true, 0);
+			header.pack_start(&title_box);
 			header.set_decoration_layout(Some("icon:minimize,close"));
 			
 			window.set_titlebar(Some(&header));
@@ -125,7 +127,7 @@ impl Myxer {
 		// Preferences Button & Popup Menu
 		{
 			let prefs_button = gtk::Button::from_icon_name(Some("open-menu-symbolic"), gtk::IconSize::SmallToolbar);
-			prefs_button.get_style_context().add_class("titlebutton");
+			prefs_button.get_style_context().add_class("flat");
 			prefs_button.set_widget_name("preferences");
 			prefs_button.set_can_focus(false);
 			header.pack_end(&prefs_button);
