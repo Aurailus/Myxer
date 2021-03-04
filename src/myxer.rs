@@ -340,8 +340,11 @@ impl Myxer {
 			let separate = meters.separate_channels;
 
 			if meters.active_sink.is_none() {
-				if let Some(sink_pair) = pulse.sinks.iter().next() {
-					meters.active_sink = Some(*sink_pair.0);
+				for (index, sink) in pulse.sinks.iter() {
+					if sink.data.name == pulse.default_sink {
+						meters.active_sink = Some(*index);
+						break;
+					}
 				}
 			}
 
@@ -373,8 +376,11 @@ impl Myxer {
 			});
 
 			if meters.active_source.is_none() {
-				if let Some(source_pair) = pulse.sources.iter().next() {
-					meters.active_source = Some(*source_pair.0);
+				for (index, source) in pulse.sources.iter() {
+					if source.data.name == pulse.default_source {
+						meters.active_source = Some(*index);
+						break;
+					}
 				}
 			}
 

@@ -259,7 +259,6 @@ impl PulseController {
 
 		fn tx_sink(tx: &Sender<TxMessage>, result: ListResult<&SinkInfo<'_>>) {
 			if let ListResult::Item(item) = result {
-				// println!("{:?}", item);
 				tx.send(TxMessage::StreamUpdate(StreamType::Sink, TxStreamData {
 					data: MeterData {
 						t: StreamType::Sink,
