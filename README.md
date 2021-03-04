@@ -1,14 +1,25 @@
 # Myxer
+
+[![release](https://github.com/Aurailus/Myxer/workflows/release/badge.svg)](https://github.com/Aurailus/Myxer/releases)
+[![discord](https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=white&labelColor=2A3037)](https://aurail.us/discord)
+[![commit activity](https://img.shields.io/github/commit-activity/m/aurailus/myxer.svg?logo=github&labelColor=2A3037&label=commit%20activity)](https://github.com/Aurailus/Myxer/commits/master)
+
 A modern Volume Mixer for PulseAudio, built using Rust.
 
-## Developing
-Just use `cargo run`, (or `nodemon ./`, if you have that installed) in the root directory, that's it. 
+**&copy; 2021 Auri Collings. [GPLv3](https://github.com/Aurailus/Myxer/LICENSE.md).**
 
 ## Building
+
 Use `cargo build --release` in the root directory.
 
-## Disclaimer
-This project is *very* early in development, there are bugs and unfinished features! Use at your own risk. I'm very new to Rust as well, so there may be inefficiencies or other strange behavior that I haven't caught. Please file an issue if you find a problem.
+Prebuilt binaries are available as artifacts, download the latest one **[here](https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip)**.
+
+Please note: While this project is more-or-less complete, there may still be bugs or issues. Your mileage may vary.
 
 ## Contributing
+
 Pull Requests are welcome and appreciated. If you're unsure of whether a feature will be accepted, open an issue and I'll get back to you as soon as I can.  
+
+### Building for Development
+
+Just use `cargo run`, (or `nodemon ./`, if you have that installed) in the root directory, that's it. 
