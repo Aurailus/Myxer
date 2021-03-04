@@ -1,5 +1,9 @@
 # Myxer
 
+[![release](https://github.com/Aurailus/Myxer/workflows/release/badge.svg)](https://github.com/Aurailus/Myxer/releases)
+[![discord](https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=white&labelColor=2A3037)](https://aurail.us/discord)
+[![commit activity](https://img.shields.io/github/commit-activity/m/aurailus/myxer.svg?logo=github&labelColor=2A3037&label=commit%20activity)](https://github.com/Aurailus/Myxer/commits/master)
+
 A modern Volume Mixer for PulseAudio, built using Rust.
 
 **&copy; 2021 Auri Collings. [GPLv3](https://github.com/Aurailus/Myxer/LICENSE.md).**
@@ -7,6 +11,8 @@ A modern Volume Mixer for PulseAudio, built using Rust.
 ## Building
 
 Use `cargo build --release` in the root directory.
+
+Prebuilt binaries are available on the [Releases](https://github.com/Aurailus/Myxer/Releases) page.
 
 Please note: While this project is more-or-less complete, there may still be bugs or issues. Your mileage may vary.
 
