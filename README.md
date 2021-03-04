@@ -19,7 +19,7 @@ Myxer is a lightweight, powerful Volume Mixer built in Rust, that uses modern UI
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left">
+<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="625">
 
 ### Responsive
 
@@ -31,7 +31,7 @@ Additionally, PulseAudio plugin can be easily configured to open Myxer when you 
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="750">
+<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="675">
 
 ### Advanced
 
