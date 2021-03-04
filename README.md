@@ -20,7 +20,7 @@ Myxer is a lightweight, powerful Volume Mixer built with modern UI design for a 
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="625">
+<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="600">
 
 ### Adaptive
 
@@ -33,7 +33,7 @@ Additionally, one can easily configure PulseAudio panel plugins to open Myxer wh
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="650">
+<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="600">
 
 ### Advanced
 
@@ -54,6 +54,7 @@ Myxer is licensed under the [GNU General Public License v3](https://github.com/A
 
 <p align="center"><a href="https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip">Latest Artifact</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/BUILDING.md">Building</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md">Contributing</a></p>
 
+<br>
 <br>
 <br>
 
