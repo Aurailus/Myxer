@@ -7,7 +7,12 @@ use crate::about;
 use crate::style;
 use crate::meter::Meter;
 use crate::shared::Shared;
+use crate::profiles::Profiles;
 use crate::pulse_controller::PulseController;
+
+struct Container {
+	profiles: Option<Profiles>
+}
 
 struct Meters {
 	pub sink: Meter,
@@ -48,22 +53,11 @@ impl Meters {
 
 	fn toggle_visualizers(&mut self) -> bool {
 		self.show_visualizers = !self.show_visualizers;
-		if self.show_visualizers { return true; }
-
-		self.sink.set_peak(None);
-		self.source.set_peak(None);
-		for (_, input) in self.sink_inputs.iter_mut() { input.set_peak(None) }
-		for (_, output) in self.source_outputs.iter_mut() { output.set_peak(None) }
-
-		false
+		self.show_visualizers
 	}
 
 	fn toggle_separate_channels(&mut self) -> bool {
 		self.separate_channels = !self.separate_channels;
-		self.sink.set_separate_channels(self.separate_channels);
-		self.source.set_separate_channels(self.separate_channels);
-		for (_, input) in self.sink_inputs.iter_mut() { input.set_separate_channels(self.separate_channels) }
-		for (_, output) in self.source_outputs.iter_mut() { output.set_separate_channels(self.separate_channels) }
 		self.separate_channels
 	}
 
@@ -79,10 +73,10 @@ impl Meters {
 }
 
 pub struct Myxer {
-	// app: gtk::Application,
-	// window: gtk::ApplicationWindow,
 	pulse: Shared<PulseController>,
-	meters: Shared<Meters>
+	meters: Shared<Meters>,
+
+	profiles: Shared<Container>
 }
 
 impl Myxer {
@@ -150,12 +144,17 @@ impl Myxer {
 			split_channels.set_action_name(Some("app.split_channels"));
 			prefs_box.add(&split_channels);
 
+			let card_profiles = gtk::ModelButton::new();
+			card_profiles.set_property_text(Some("Card Profiles..."));
+			card_profiles.set_action_name(Some("app.card_profiles"));
+			prefs_box.add(&card_profiles);
+
 			prefs_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 4);
 
-			let help = gtk::ModelButton::new();
-			help.set_property_text(Some("Help"));
-			help.set_action_name(Some("app.help"));
-			prefs_box.add(&help);
+			// let help = gtk::ModelButton::new();
+			// help.set_property_text(Some("Help"));
+			// help.set_action_name(Some("app.help"));
+			// prefs_box.add(&help);
 
 			let about = gtk::ModelButton::new();
 			about.set_property_text(Some("About Myxer"));
@@ -272,6 +271,8 @@ impl Myxer {
 			window.show_all();
 		}
 
+		let profiles = Shared::new(Container { profiles: None });
+
 		// Actions
 		{
 			let actions = gio::SimpleActionGroup::new();
@@ -280,6 +281,15 @@ impl Myxer {
 			let about = gio::SimpleAction::new("about", None);
 			about.connect_activate(|_, _| about::about());
 			actions.add_action(&about);
+
+			let card_profiles = gio::SimpleAction::new("card_profiles", None);
+			let pulse = pulse.clone();
+			let window = window.clone();
+			let profiles = profiles.clone();
+			card_profiles.connect_activate(move |_, _| {
+				profiles.borrow_mut().profiles = Some(Profiles::new(&window, &pulse));
+			});
+			actions.add_action(&card_profiles);
 
 			let meters_clone = meters.clone();
 			let split_channels = gio::SimpleAction::new_stateful("split_channels", glib::VariantTy::new("bool").ok(), &false.to_variant());
@@ -293,29 +303,37 @@ impl Myxer {
 		}
 
 		Self {
-			// window,
+			pulse: pulse.clone(),
 			meters,
-			// app: app.clone(),
-			pulse: pulse.clone()
+			profiles
 		}
 	}
 
 	pub fn update(&mut self) {
+		let mut kill = false;
+		if let Some(profiles) = self.profiles.borrow_mut().profiles.as_mut() { kill = !profiles.update(); }
+		if kill { self.profiles.borrow_mut().profiles = None; }
+
 		if self.pulse.borrow_mut().update() {
 			let pulse = self.pulse.borrow();
 			let mut meters = self.meters.borrow_mut();
 			let show = meters.show_visualizers;
+			let separate = meters.separate_channels;
 
 			if meters.active_sink.is_none() {
 				if let Some(sink_pair) = pulse.sinks.iter().next() {
 					meters.active_sink = Some(*sink_pair.0);
 				}
 			}
-			if meters.active_sink.is_some() {
-				let sink = &pulse.sinks.get(&meters.active_sink.unwrap()).unwrap();
-				if !meters.sink.is_connected() { meters.sink.set_connection(Some(self.pulse.clone())); }
-				meters.sink.set_data(&sink.data);
-				if show { meters.sink.set_peak(Some(sink.peak)); }
+
+			if let Some(active_sink) = meters.active_sink {
+				if let Some(sink) = &pulse.sinks.get(&active_sink) {
+					if !meters.sink.is_connected() { meters.sink.set_connection(Some(self.pulse.clone())); }
+					meters.sink.set_data(&sink.data);
+					meters.sink.set_separate_channels(separate);
+					meters.sink.set_peak(if show { Some(sink.peak) } else { None });
+				}
+				else { meters.active_sink = None; }
 			}
 
 			for (index, input) in pulse.sink_inputs.iter() {
@@ -324,7 +342,8 @@ impl Myxer {
 				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| Meter::new(Some(self.pulse.clone())));
 				if meter.widget.get_parent().is_none() { sink_inputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&input.data);
-				if show { meter.set_peak(Some(input.peak)); }
+				meter.set_separate_channels(separate);
+				meter.set_peak(if show { Some(input.peak) } else { None });
 			}
 
 			let sink_inputs_box = meters.sink_inputs_box.clone();
@@ -339,11 +358,15 @@ impl Myxer {
 					meters.active_source = Some(*source_pair.0);
 				}
 			}
-			if meters.active_source.is_some() {
-				let source = &pulse.sources.get(&meters.active_source.unwrap()).unwrap();
-				if !meters.source.is_connected() { meters.source.set_connection(Some(self.pulse.clone())); }
-				meters.source.set_data(&source.data);
-				if show { meters.source.set_peak(Some(source.peak)); }
+
+			if let Some(active_source) = meters.active_source {
+				if let Some(source) = &pulse.sources.get(&active_source) {
+					if !meters.source.is_connected() { meters.source.set_connection(Some(self.pulse.clone())); }
+					meters.source.set_data(&source.data);
+					meters.source.set_separate_channels(separate);
+					meters.source.set_peak(if show { Some(source.peak) } else { None });
+				}
+				else { meters.active_source = None; }
 			}
 
 			for (index, output) in pulse.source_outputs.iter() {
@@ -352,7 +375,8 @@ impl Myxer {
 				let meter = meters.source_outputs.entry(*index).or_insert_with(|| Meter::new(Some(self.pulse.clone())));
 				if meter.widget.get_parent().is_none() { source_outputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&output.data);
-				if show { meter.set_peak(Some(output.peak)); }
+				meter.set_separate_channels(separate);
+				meter.set_peak(if show { Some(output.peak) } else { None });
 			}
 
 			let source_outputs_box = meters.source_outputs_box.clone();

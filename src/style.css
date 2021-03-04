@@ -105,3 +105,13 @@ sides of the scroll container. */
 undershoot {
 	background: none;
 }
+
+/** Card border */
+
+#card {
+	border-bottom: 1px solid alpha(@border_color, 0.5);
+}
+
+#card:first-child {
+	margin-top: 4px;
+}

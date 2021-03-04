@@ -1,5 +1,5 @@
 {
 	"watch": ["src"],
 	"ext": ".rs",
-	"exec": "cargo run"
+	"exec": "RUST_BACKTRACE=1 cargo run"
 }

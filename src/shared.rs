@@ -1,7 +1,7 @@
 //Source: https://gist.github.com/stevedonovan/7e3a6d8c8921e3eff16c4b11ab82b8d7
 
 use std::rc::Rc;
-use std::cell::{RefCell,Ref, RefMut};
+use std::cell::{RefCell, Ref, RefMut};
 use std::ops::Deref;
 use std::fmt;
 
@@ -47,13 +47,3 @@ impl <T: fmt::Debug> fmt::Debug for Shared<T> {
 		write!(f, "{:?}", self.deref())
 	}
 }
-
-// impl <'a,T> Deref for Shared<T>{
-// 	type Target = T;
-
-// 	#[inline]
-// 	fn deref(&self) -> &T {
-// 		unsafe {self.as_ptr().as_ref().unwrap()}
-// 	}
-
-// }

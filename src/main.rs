@@ -1,10 +1,12 @@
 use gio::prelude::*;
 
+mod card;
 mod myxer;
 mod style;
 mod meter;
 mod about;
 mod shared;
+mod profiles;
 mod pulse_controller;
 
 use myxer::Myxer;

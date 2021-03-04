@@ -23,7 +23,7 @@ pub struct MeterData {
 	pub index: u32,
 
 	pub name: String,
-	pub icon: Option<String>,
+	pub icon: String,
 
 	pub volume: ChannelVolumes,
 	pub muted: bool,
@@ -143,6 +143,7 @@ impl Meter {
 	}
 
 	pub fn set_separate_channels(&mut self, separate: bool) {
+		if self.separate == separate { return }
 		self.separate = separate;
 		self.reset_connection();
 	}
@@ -245,8 +246,7 @@ impl Meter {
 
 		if data.icon != self.data.icon {
 			self.data.icon = data.icon.clone();
-			let icon = if self.data.icon.is_some() { self.data.icon.as_ref().unwrap().as_str() } else { &"audio-volume-muted-symbolic" };
-			self.widgets.icon.set_from_icon_name(Some(&icon), gtk::IconSize::Dnd);
+			self.widgets.icon.set_from_icon_name(Some(&self.data.icon.as_str()), gtk::IconSize::Dnd);
 		}
 
 		if data.name != self.data.name {

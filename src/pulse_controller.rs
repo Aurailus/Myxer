@@ -9,12 +9,13 @@ use pulse::mainloop::threaded::Mainloop;
 use pulse::context::{ Context, FlagSet as CtxFlagSet };
 use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
 use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
-use pulse::context::introspect::{ SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo };
+use pulse::context::introspect::{ SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo, CardInfo };
 
 use std::collections::HashMap;
 use std::sync::mpsc::{ channel, Sender, Receiver };
 
 use crate::shared::Shared;
+use crate::card::CardData;
 use crate::meter::MeterData;
 
 
@@ -31,15 +32,17 @@ impl Default for StreamType {
 
 /** The message types that can be passed through the channel from async callbacks. */
 enum TxMessage {
-	Update(StreamType, TxData),
-	Remove(StreamType, u32),
+	StreamUpdate(StreamType, TxStreamData),
+	StreamRemove(StreamType, u32),
+	CardUpdate(CardData),
+	CardRemove(u32),
 	Peak(StreamType, u32, u32)
 }
 
 
 /** Transferrable information pretaining to a stream. */
 #[derive(Debug)]
-pub struct TxData {
+pub struct TxStreamData {
 	pub data: MeterData,
 	pub monitor_index: u32,
 }
@@ -74,6 +77,7 @@ pub struct PulseController {
 	pub sink_inputs: HashMap<u32, StreamData>,
 	pub sources: HashMap<u32, StreamData>,
 	pub source_outputs: HashMap<u32, StreamData>,
+	pub cards: HashMap<u32, CardData>,
 }
 
 impl PulseController {
@@ -103,7 +107,8 @@ impl PulseController {
 			sinks: HashMap::new(),
 			sink_inputs: HashMap::new(),
 			sources: HashMap::new(),
-			source_outputs: HashMap::new()
+			source_outputs: HashMap::new(),
+			cards: HashMap::new()
 		}
 	}
 
@@ -162,21 +167,14 @@ impl PulseController {
 
 
 	/**
-	 * Asychronously sets the volume of a stream to a raw integer value.
+	 * Asychronously sets the volume of a stream to a new value.
 	 *
 	 * @param {StreamType} t - The type of stream.
 	 * @param {u32} index - The index of the stream.
-	 * @param {u32} vol - The desired volume.
+	 * @param {ChannelVolumes} volumes - The desired volume.
 	 */
 
 	pub fn set_volume(&self, t: StreamType, index: u32, volumes: ChannelVolumes) {
-		// let channels = if t == StreamType::Sink || t == StreamType::SinkInput { 2 } else { 1 };
-		// let mut volumes = ChannelVolumes::default();
-		// let volume = Volume(vol);
-	
-		// volumes.set_len(channels);
-		// volumes.set(channels, volume);
-
 		let mut introspect = self.context.borrow().introspect();
 		
 		match t {
@@ -208,6 +206,19 @@ impl PulseController {
 
 
 	/**
+	 * Asynchronously sets a card's profile.
+	 *
+	 * @param {u32} index - The card index.
+	 * @param {&str} profile - The profile name.
+	 */
+	 
+	pub fn set_card_profile(&self, index: u32, profile: &str) {
+		let mut introspect = self.context.borrow().introspect();
+		introspect.set_card_profile_by_index(index, profile, None);
+	}
+
+
+	/**
 	 * Bind listeners to the required libpulse events, populate sink stores.
 	 * Separated from connect() for readability.
 	 */
@@ -215,11 +226,11 @@ impl PulseController {
 	pub fn subscribe(&mut self) {
 		fn tx_sink(tx: &Sender<TxMessage>, result: ListResult<&SinkInfo<'_>>) {
 			if let ListResult::Item(item) = result {
-				tx.send(TxMessage::Update(StreamType::Sink, TxData {
+				tx.send(TxMessage::StreamUpdate(StreamType::Sink, TxStreamData {
 					data: MeterData {
 						t: StreamType::Sink,
 						index: item.index,
-						icon: Some("multimedia-volume-control".to_owned()),
+						icon: "multimedia-volume-control".to_owned(),
 						name: item.active_port.as_ref().unwrap().description.clone().unwrap().into_owned(),
 						volume: item.volume,
 						muted: item.mute
@@ -231,11 +242,11 @@ impl PulseController {
 
 		fn tx_sink_input(tx: &Sender<TxMessage>, result: ListResult<&SinkInputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
-				tx.send(TxMessage::Update(StreamType::SinkInput, TxData {
+				tx.send(TxMessage::StreamUpdate(StreamType::SinkInput, TxStreamData {
 					data: MeterData {
 						t: StreamType::SinkInput,
 						index: item.index,
-						icon: Some(item.proplist.get_str("application.icon_name").unwrap_or("audio-card".to_owned())),
+						icon: item.proplist.get_str("application.icon_name").unwrap_or_else(|| "audio-card".to_owned()),
 						name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
 						volume: item.volume,
 						muted: item.mute
@@ -249,11 +260,11 @@ impl PulseController {
 			if let ListResult::Item(item) = result {
 				let name = item.name.clone().unwrap().into_owned();
 				if name.ends_with(".monitor") { return; }
-				tx.send(TxMessage::Update(StreamType::Source, TxData {
+				tx.send(TxMessage::StreamUpdate(StreamType::Source, TxStreamData {
 					data: MeterData {
 						t: StreamType::Source,
 						index: item.index,
-						icon: Some("audio-input-microphone".to_owned()),
+						icon: "audio-input-microphone".to_owned(),
 						name: item.description.clone().unwrap().into_owned(),
 						volume: item.volume,
 						muted: item.mute
@@ -267,11 +278,11 @@ impl PulseController {
 			if let ListResult::Item(item) = result {
 				let app_id = item.proplist.get_str("application.process.binary").unwrap_or("".to_owned());
 				if app_id.contains("pavucontrol") || app_id.contains("myxer") { return; }
-				tx.send(TxMessage::Update(StreamType::SourceOutput, TxData {
+				tx.send(TxMessage::StreamUpdate(StreamType::SourceOutput, TxStreamData {
 					data: MeterData {
 						t: StreamType::SourceOutput,
 						index: item.index,
-						icon: Some(item.proplist.get_str("application.icon_name").unwrap_or("audio-card".to_owned())),
+						icon: item.proplist.get_str("application.icon_name").unwrap_or_else(|| "audio-card".to_owned()),
 						name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
 						volume: item.volume,
 						muted: item.mute
@@ -280,6 +291,19 @@ impl PulseController {
 				})).unwrap();
 			};
 		};
+
+		fn tx_card(tx: &Sender<TxMessage>, result: ListResult<&CardInfo<'_>>) {
+			if let ListResult::Item(item) = result {
+				tx.send(TxMessage::CardUpdate(CardData {
+					index: item.index,
+					name: item.proplist.get_str("device.description").unwrap_or("".to_owned()),
+					icon: item.proplist.get_str("device.icon_name").unwrap_or_else(|| "audio-card-pci".to_owned()),
+					profiles: item.profiles.iter().map(|p| (p.name.as_ref().unwrap().clone().into_owned(),
+						p.description.as_ref().unwrap().clone().into_owned())).collect(),
+					active_profile: item.active_profile.as_ref().unwrap().name.as_ref().unwrap().clone().into_owned()
+				})).unwrap();
+			}
+		}
 
 		let mut context = self.context.borrow_mut();
 		let introspect = context.introspect();
@@ -292,10 +316,12 @@ impl PulseController {
 		introspect.get_source_info_list(move |res| tx_source(&tx, res));
 		let tx = self.channel.tx.clone();
 		introspect.get_source_output_info_list(move |res| tx_source_output(&tx, res));
+		let tx = self.channel.tx.clone();
+		introspect.get_card_info_list(move |res| tx_card(&tx, res));
 		
 		let tx = self.channel.tx.clone();
 		context.subscribe(InterestMaskSet::SINK | InterestMaskSet::SINK_INPUT |
-			InterestMaskSet::SOURCE | InterestMaskSet::SOURCE_OUTPUT, |_|());
+			InterestMaskSet::SOURCE | InterestMaskSet::SOURCE_OUTPUT | InterestMaskSet::CARD, |_|());
 		context.set_subscribe_callback(Some(Box::new(move |fac, op, index| {
 			let tx = tx.clone();
 			let facility = fac.unwrap();
@@ -303,20 +329,24 @@ impl PulseController {
 
 			match facility {
 				Facility::Sink => match operation {
-					Operation::Removed => tx.send(TxMessage::Remove(StreamType::Sink, index)).unwrap(),
+					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::Sink, index)).unwrap(),
 					_ => drop(introspect.get_sink_info_by_index(index, move |res| tx_sink(&tx, res)))
 				},
 				Facility::SinkInput => match operation {
-					Operation::Removed => tx.send(TxMessage::Remove(StreamType::SinkInput, index)).unwrap(),
+					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::SinkInput, index)).unwrap(),
 					_ => drop(introspect.get_sink_input_info(index, move |res| tx_sink_input(&tx, res)))
 				},
 				Facility::Source => match operation {
-					Operation::Removed => tx.send(TxMessage::Remove(StreamType::Source, index)).unwrap(),
+					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::Source, index)).unwrap(),
 					_ => drop(introspect.get_source_info_by_index(index, move |res| tx_source(&tx, res)))
 				},
 				Facility::SourceOutput => match operation {
-					Operation::Removed => tx.send(TxMessage::Remove(StreamType::SourceOutput, index)).unwrap(),
+					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::SourceOutput, index)).unwrap(),
 					_ => drop(introspect.get_source_output_info(index, move |res| tx_source_output(&tx, res)))
+				},
+				Facility::Card => match operation {
+					Operation::Removed => tx.send(TxMessage::CardRemove(index)).unwrap(),
+					_ => drop(introspect.get_card_info_by_index(index, move |res| tx_card(&tx, res)))
 				},
 				_ => ()
 			};
@@ -339,9 +369,11 @@ impl PulseController {
 				Ok(res) => {
 					received = true;
 					match res {
-						TxMessage::Update(t, data) => self.update_stream(t, &data),
-						TxMessage::Remove(t, ind) => self.remove_stream(t, ind),
-						TxMessage::Peak(t, index, peak) => self.update_peak(t, index, peak),
+						TxMessage::StreamUpdate(t, data) => self.update_stream(t, &data),
+						TxMessage::StreamRemove(t, ind) => self.remove_stream(t, ind),
+						TxMessage::CardUpdate(data) => self.update_card(&data),
+						TxMessage::CardRemove(ind) => self.remove_card(ind),
+						TxMessage::Peak(t, ind, peak) => self.update_peak(t, ind, peak),
 					}
 				},
 				_ => break
@@ -354,10 +386,14 @@ impl PulseController {
 
 	/**
 	 * Closes the pulse connection and cleans up any dangling references.
-	 * TODO: Close all streams here.
 	 */
 
 	pub fn cleanup(&mut self) {
+		while let Some((index, _)) = self.sinks.iter().enumerate().next() { self.remove_stream(StreamType::Sink, index as u32) }
+		while let Some((index, _)) = self.sink_inputs.iter().enumerate().next() { self.remove_stream(StreamType::SinkInput, index as u32) }
+		while let Some((index, _)) = self.sources.iter().enumerate().next() { self.remove_stream(StreamType::Source, index as u32) }
+		while let Some((index, _)) = self.source_outputs.iter().enumerate().next() { self.remove_stream(StreamType::SourceOutput, index as u32) }
+		
 		let mut mainloop = self.mainloop.borrow_mut();
 		mainloop.lock();
 		mainloop.stop();
@@ -369,10 +405,10 @@ impl PulseController {
 	 * Updates a stream in the store, or creates a new one and begins monitoring.
 	 *
 	 * @param {StreamType} t - The type of stream to update.
-	 * @param {&TxData} stream - The stream's data.
+	 * @param {&TxStreamData} stream - The stream's data.
 	 */
 
-	fn update_stream(&mut self, t: StreamType, stream: &TxData) {
+	fn update_stream(&mut self, t: StreamType, stream: &TxStreamData) {
 		let data = stream.data.clone();
 		let index = data.index;
 
@@ -417,7 +453,7 @@ impl PulseController {
 			let mut monitor = stream.monitor.borrow_mut();
 			if monitor.get_state().is_good() {
 				monitor.set_read_callback(None);
-				monitor.disconnect().unwrap();
+				let _ = monitor.disconnect();
 			}
 		}
 
@@ -496,10 +532,31 @@ impl PulseController {
 			let sc = s.clone();
 			let txc = self.channel.tx.clone();
 			stream.set_read_callback(Some(Box::new(move |_| read_callback(&mut sc.borrow_mut(), t, stream_index, &txc))));
-			// let sc = s.clone();
-			// stream.set_state_callback(Some(Box::new(move || println!("{:?}", sc.borrow_mut().get_state()))));
 		}
 
 		return s;
+	}
+
+
+	/**
+	 * Updates a card in the store, or creates a new one.
+	 *
+	 * @param {&CardData} data - The card's data.
+	 */
+
+	fn update_card(&mut self, data: &CardData) {
+		let index = data.index;
+		self.cards.insert(index, data.clone());
+	}
+
+
+	/**
+	 * Removes a card from the store.
+	 *
+	 * @param {u32} index - The index of the stream to remove.
+	 */
+
+	fn remove_card(&mut self, index: u32) {
+		self.cards.remove(&index);
 	}
 }
