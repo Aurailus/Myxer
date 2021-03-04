@@ -72,5 +72,5 @@ Pull Requests are welcome and appreciated. If you're unsure of whether a feature
 <br>
 <br>
 
-**&copy; Auri Collings, 2021. Made with <3**
+&copy; [Auri Collings](https://twitter.com/Aurailus), 2021. Made with <3
 
