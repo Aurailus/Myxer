@@ -24,6 +24,7 @@ pub struct MeterData {
 
 	pub name: String,
 	pub icon: String,
+	pub description: String,
 
 	pub volume: ChannelVolumes,
 	pub muted: bool,
@@ -157,6 +158,10 @@ impl Meter {
 		self.pulse.is_some()
 	}
 
+	pub fn get_name(&self) -> &str {
+		self.data.name.as_str()
+	}
+
 	fn reset_connection(&mut self) {
 		self.disconnect();
 		if self.pulse.is_none() { return; }
@@ -251,7 +256,11 @@ impl Meter {
 
 		if data.name != self.data.name {
 			self.data.name = data.name.clone();
-			self.widgets.label.set_label(self.data.name.as_str());
+		}
+
+		if data.description != self.data.description {
+			self.data.description = data.description.clone();
+			self.widgets.label.set_label(self.data.description.as_str());
 		}
 
 		if volume_changed || data.muted != self.data.muted {

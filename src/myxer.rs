@@ -168,7 +168,6 @@ impl Myxer {
 		// Connect Pulse
 
 		pulse.borrow_mut().connect();
-		pulse.borrow_mut().subscribe();
 
 		let meters = Shared::new(Meters::new());
 
@@ -176,16 +175,16 @@ impl Myxer {
 		{
 			let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 			{
-				let pulse = pulse.clone();
+				let pulse_clone = pulse.clone();
 				let meters_clone = meters.clone();
 				let sink_meter = &mut meters.borrow_mut().sink;
 				sink_meter.connect_label_clicked(move |_| {
 					let menu = gtk::Menu::new();
-					let pulse = pulse.borrow();
+					let pulse = pulse_clone.borrow();
 
 					let mut last: Option<gtk::RadioMenuItem> = None;
 					for (i, v) in pulse.sinks.iter() {
-						let button = gtk::RadioMenuItem::with_label(v.data.name.as_str());
+						let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
 						if let Some(last) = last { button.join_group(Some(&last)) }
 						last = Some(button.clone());
 						menu.add(&button);
@@ -201,6 +200,16 @@ impl Myxer {
 							meters.borrow_mut().set_active_sink(i);
 						});
 					}
+
+					menu.add(&gtk::SeparatorMenuItem::new());
+
+					let name = meters_clone.borrow().sink.get_name().to_owned();
+					let button = gtk::CheckMenuItem::with_label("Default Output Device");
+					button.set_active(name == pulse.default_sink);
+					button.set_sensitive(!button.get_active());
+					let pulse = pulse_clone.clone();
+					button.connect_toggled(move |_| pulse.borrow().set_default_sink(&name));
+					menu.add(&button);
 
 					menu.show_all();
 					menu.popup_easy(0, 0);
@@ -219,16 +228,16 @@ impl Myxer {
 
 			let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 			{
-				let pulse = pulse.clone();
+				let pulse_clone = pulse.clone();
 				let meters_clone = meters.clone();
 				let source_meter = &mut meters.borrow_mut().source;
 				source_meter.connect_label_clicked(move |_| {
 					let menu = gtk::Menu::new();
-					let pulse = pulse.borrow();
+					let pulse = pulse_clone.borrow();
 
 					let mut last: Option<gtk::RadioMenuItem> = None;
 					for (i, v) in pulse.sources.iter() {
-						let button = gtk::RadioMenuItem::with_label(v.data.name.as_str());
+						let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
 						if let Some(last) = last { button.join_group(Some(&last)) }
 						last = Some(button.clone());
 						menu.add(&button);
@@ -244,6 +253,16 @@ impl Myxer {
 							meters.borrow_mut().set_active_source(i);
 						});
 					}
+
+					menu.add(&gtk::SeparatorMenuItem::new());
+
+					let name = meters_clone.borrow().source.get_name().to_owned();
+					let button = gtk::CheckMenuItem::with_label("Default Input Device");
+					button.set_active(name == pulse.default_source);
+					button.set_sensitive(!button.get_active());
+					let pulse = pulse_clone.clone();
+					button.connect_toggled(move |_| pulse.borrow().set_default_source(&name));
+					menu.add(&button);
 
 					menu.show_all();
 					menu.popup_easy(0, 0);

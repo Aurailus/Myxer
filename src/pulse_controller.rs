@@ -9,7 +9,7 @@ use pulse::mainloop::threaded::Mainloop;
 use pulse::context::{ Context, FlagSet as CtxFlagSet };
 use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
 use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
-use pulse::context::introspect::{ SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo, CardInfo };
+use pulse::context::introspect::{ ServerInfo, SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo, CardInfo };
 
 use std::collections::HashMap;
 use std::sync::mpsc::{ channel, Sender, Receiver };
@@ -32,6 +32,7 @@ impl Default for StreamType {
 
 /** The message types that can be passed through the channel from async callbacks. */
 enum TxMessage {
+	Default(String, String),
 	StreamUpdate(StreamType, TxStreamData),
 	StreamRemove(StreamType, u32),
 	CardUpdate(CardData),
@@ -73,6 +74,9 @@ pub struct PulseController {
 	context: Shared<Context>,
 	channel: Channel<TxMessage>,
 
+	pub default_sink: String,
+	pub default_source: String,
+
 	pub sinks: HashMap<u32, StreamData>,
 	pub sink_inputs: HashMap<u32, StreamData>,
 	pub sources: HashMap<u32, StreamData>,
@@ -81,7 +85,6 @@ pub struct PulseController {
 }
 
 impl PulseController {
-
 
 	/**
 	 * Create a new pulse controller, configuring
@@ -103,6 +106,9 @@ impl PulseController {
 		PulseController {
 			mainloop, context,
 			channel: Channel { tx, rx },
+
+			default_sink: "".to_owned(),
+			default_source: "".to_owned(),
 
 			sinks: HashMap::new(),
 			sink_inputs: HashMap::new(),
@@ -167,6 +173,28 @@ impl PulseController {
 
 
 	/**
+	 * Asynchronously sets the default sink to the name provided.
+	 *
+	 * @param {&str} sink - The sink name.
+	 */
+
+	pub fn set_default_sink(&self, sink: &str) {
+		self.context.borrow_mut().set_default_sink(sink, |_|());
+	}
+
+
+	/**
+	 * Asynchronously sets the default source to the name provided.
+	 *
+	 * @param {&str} source - The source name.
+	 */
+
+	pub fn set_default_source(&self, source: &str) {
+		self.context.borrow_mut().set_default_source(source, |_|());
+	}
+
+
+	/**
 	 * Asychronously sets the volume of a stream to a new value.
 	 *
 	 * @param {StreamType} t - The type of stream.
@@ -223,23 +251,11 @@ impl PulseController {
 	 * Separated from connect() for readability.
 	 */
 
-	pub fn subscribe(&mut self) {
-		// fn tx_server(tx: &Sender<TxMessage>, result: ListResult<&ServerInfo<'_>>) {
-		// 	if let ListResult::Item(item) = result {
-		// 		println!("{:?}", item);
-		// 		// tx.send(TxMessage::StreamUpdate(StreamType::Sink, TxStreamData {
-		// 		// 	data: MeterData {
-		// 		// 		t: StreamType::Sink,
-		// 		// 		index: item.index,
-		// 		// 		icon: "multimedia-volume-control".to_owned(),
-		// 		// 		name: item.description.clone().unwrap().into_owned(),
-		// 		// 		volume: item.volume,
-		// 		// 		muted: item.mute
-		// 		// 	},
-		// 		// 	monitor_index: item.monitor_source
-		// 		// })).unwrap();
-		// 	};
-		// };
+	fn subscribe(&mut self) {
+		fn tx_server(tx: &Sender<TxMessage>, item: &ServerInfo<'_>) {
+			tx.send(TxMessage::Default(item.default_sink_name.clone().unwrap().into_owned(),
+				item.default_source_name.clone().unwrap().into_owned())).unwrap();
+		};
 
 		fn tx_sink(tx: &Sender<TxMessage>, result: ListResult<&SinkInfo<'_>>) {
 			if let ListResult::Item(item) = result {
@@ -249,7 +265,8 @@ impl PulseController {
 						t: StreamType::Sink,
 						index: item.index,
 						icon: "multimedia-volume-control".to_owned(),
-						name: item.description.clone().unwrap().into_owned(),
+						name: item.name.clone().unwrap().into_owned(),
+						description: item.description.clone().unwrap().into_owned(),
 						volume: item.volume,
 						muted: item.mute
 					},
@@ -265,7 +282,8 @@ impl PulseController {
 						t: StreamType::SinkInput,
 						index: item.index,
 						icon: item.proplist.get_str("application.icon_name").unwrap_or_else(|| "audio-card".to_owned()),
-						name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
+						name: item.name.clone().unwrap().into_owned(),
+						description: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
 						volume: item.volume,
 						muted: item.mute
 					},
@@ -283,7 +301,8 @@ impl PulseController {
 						t: StreamType::Source,
 						index: item.index,
 						icon: "audio-input-microphone".to_owned(),
-						name: item.description.clone().unwrap().into_owned(),
+						name: item.name.clone().unwrap().into_owned(),
+						description: item.description.clone().unwrap().into_owned(),
 						volume: item.volume,
 						muted: item.mute
 					},
@@ -301,7 +320,8 @@ impl PulseController {
 						t: StreamType::SourceOutput,
 						index: item.index,
 						icon: item.proplist.get_str("application.icon_name").unwrap_or_else(|| "audio-card".to_owned()),
-						name: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
+						name: item.name.clone().unwrap().into_owned(),
+						description: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
 						volume: item.volume,
 						muted: item.mute
 					},
@@ -327,6 +347,8 @@ impl PulseController {
 		let introspect = context.introspect();
 
 		let tx = self.channel.tx.clone();
+		introspect.get_server_info(move |res| tx_server(&tx, res));
+		let tx = self.channel.tx.clone();
 		introspect.get_sink_info_list(move |res| tx_sink(&tx, res));
 		let tx = self.channel.tx.clone();
 		introspect.get_sink_input_info_list(move |res| tx_sink_input(&tx, res));
@@ -338,7 +360,7 @@ impl PulseController {
 		introspect.get_card_info_list(move |res| tx_card(&tx, res));
 		
 		let tx = self.channel.tx.clone();
-		context.subscribe(InterestMaskSet::SINK | InterestMaskSet::SINK_INPUT |
+		context.subscribe(InterestMaskSet::SERVER | InterestMaskSet::SINK | InterestMaskSet::SINK_INPUT |
 			InterestMaskSet::SOURCE | InterestMaskSet::SOURCE_OUTPUT | InterestMaskSet::CARD, |_|());
 		context.set_subscribe_callback(Some(Box::new(move |fac, op, index| {
 			let tx = tx.clone();
@@ -346,6 +368,7 @@ impl PulseController {
 			let operation = op.unwrap();
 
 			match facility {
+				Facility::Server => drop(introspect.get_server_info(move |res| tx_server(&tx, res))),
 				Facility::Sink => match operation {
 					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::Sink, index)).unwrap(),
 					_ => drop(introspect.get_sink_info_by_index(index, move |res| tx_sink(&tx, res)))
@@ -387,6 +410,7 @@ impl PulseController {
 				Ok(res) => {
 					received = true;
 					match res {
+						TxMessage::Default(sink, source) => self.update_default(sink, source),
 						TxMessage::StreamUpdate(t, data) => self.update_stream(t, &data),
 						TxMessage::StreamRemove(t, ind) => self.remove_stream(t, ind),
 						TxMessage::CardUpdate(data) => self.update_card(&data),
@@ -416,6 +440,19 @@ impl PulseController {
 		mainloop.lock();
 		mainloop.stop();
 		mainloop.unlock();
+	}
+
+
+	/**
+	 * Updates the default ('fallback') sink and source.
+	 *
+	 * @param {String} sink - The new default sink.
+	 * @param {String} source - The new default source.
+	 */
+
+	fn update_default(&mut self, sink: String, source: String) {
+		self.default_sink = sink;
+		self.default_source = source;
 	}
 
 
