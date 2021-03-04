@@ -19,7 +19,7 @@ Myxer is a lightweight, powerful Volume Mixer built in Rust, that uses modern UI
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="625">
+<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="675">
 
 ### Responsive
 
