@@ -15,13 +15,14 @@ use pulse_controller::PulseController;
 
 fn main() {
 	let pulse = Shared::new(PulseController::new());
-
+	
 	let app = gtk::Application::new(Some("com.aurailus.myxer"), Default::default())
 		.expect("Failed to initialize GTK application.");
 
 	{
 		let pulse = pulse.clone();
-		app.connect_activate(move |app| activate(app, &pulse));
+		app.connect_activate(|app| drop(app.register::<gio::Cancellable>(None)));
+		app.connect_startup(move |app| activate(app, &pulse));
 		app.run(&[]);
 	}
 
