@@ -49,7 +49,7 @@ Myxer is licensed permissively, under the [GNU Lesser Public License v3](https:/
 <br>
 <br>
 
-<h3 align="center">Heard enough? Download the <a href="https://github.com/Aurailus/Myxer/releases">Latest Release</a> here.</h3>
+<h3 align="center">Heard enough? Download the <a href="https://github.com/Aurailus/Myxer/releases">Latest Release</a> now.</h3>
 
 <p align="center"><em>Or, keep reading for alternative methods.</em></p>
 
