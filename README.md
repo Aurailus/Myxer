@@ -41,7 +41,7 @@ Behind the context menu you can find options to show individual audio channels, 
 <br>
 <br>
 
-## Open Source
+<h2 align="center">Open Source</h2>
 
 Myxer is licensed permissively, under the [GNU Lesser Public License v3](https://github.com/Aurailus/Myxer/LICENSE.md). It's under active development, and all issues and pull requests will be responded to promptly. It's also super lightweight, and should only take an hour or two to read through the source code.
 
