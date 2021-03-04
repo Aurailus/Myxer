@@ -12,7 +12,7 @@ A modern Volume Mixer for PulseAudio, built using Rust.
 
 Use `cargo build --release` in the root directory.
 
-Major releases are available on the [Releases](https://github.com/Aurailus/Myxer/Releases) page. If you want something more breaking edge, you can download an artifact of the lastest commit [here](https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip). These artifacts are untested, YMMV.
+Major releases are available on the [Releases](https://github.com/Aurailus/Myxer/releases) page. If you want something more breaking edge, you can download an artifact of the lastest commit [here](https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip). These artifacts are untested, YMMV.
 
 ## Contributing
 
