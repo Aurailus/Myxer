@@ -33,7 +33,7 @@ Additionally, one can easily configure PulseAudio panel plugins to open Myxer wh
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="600">
+<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="625">
 
 ### Advanced
 
