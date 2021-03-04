@@ -30,6 +30,7 @@ Additionally, PulseAudio plugin can be easily configured to open Myxer when you 
 <br clear="left">
 <br>
 <br>
+<br>
 
 <img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="650">
 
