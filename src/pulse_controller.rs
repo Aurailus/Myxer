@@ -224,14 +224,32 @@ impl PulseController {
 	 */
 
 	pub fn subscribe(&mut self) {
+		// fn tx_server(tx: &Sender<TxMessage>, result: ListResult<&ServerInfo<'_>>) {
+		// 	if let ListResult::Item(item) = result {
+		// 		println!("{:?}", item);
+		// 		// tx.send(TxMessage::StreamUpdate(StreamType::Sink, TxStreamData {
+		// 		// 	data: MeterData {
+		// 		// 		t: StreamType::Sink,
+		// 		// 		index: item.index,
+		// 		// 		icon: "multimedia-volume-control".to_owned(),
+		// 		// 		name: item.description.clone().unwrap().into_owned(),
+		// 		// 		volume: item.volume,
+		// 		// 		muted: item.mute
+		// 		// 	},
+		// 		// 	monitor_index: item.monitor_source
+		// 		// })).unwrap();
+		// 	};
+		// };
+
 		fn tx_sink(tx: &Sender<TxMessage>, result: ListResult<&SinkInfo<'_>>) {
 			if let ListResult::Item(item) = result {
+				// println!("{:?}", item);
 				tx.send(TxMessage::StreamUpdate(StreamType::Sink, TxStreamData {
 					data: MeterData {
 						t: StreamType::Sink,
 						index: item.index,
 						icon: "multimedia-volume-control".to_owned(),
-						name: item.active_port.as_ref().unwrap().description.clone().unwrap().into_owned(),
+						name: item.description.clone().unwrap().into_owned(),
 						volume: item.volume,
 						muted: item.mute
 					},
