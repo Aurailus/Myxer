@@ -8,24 +8,25 @@
 
 <p align="center">
   <a href="https://github.com/Aurailus/Myxer/releases"><img src="https://github.com/Aurailus/Myxer/workflows/release/badge.svg" alt="Releases"/></a>
-  <a href="https://aurail.us/discord"><img src="https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=white&labelColor=2A3037" alt="Join Discord"/></a>
   <a href="https://github.com/Aurailus/Myxer/commits/master"><img src="https://img.shields.io/github/commit-activity/m/aurailus/myxer.svg?logo=github&labelColor=2A3037&label=commit%20activity" alt="Commit Activity"/></a>
+  <a href="https://aurail.us/discord"><img src="https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=white&labelColor=2A3037" alt="Join Discord"/></a>
+  <a href="https://patreon.com/Aurailus"><img src="https://img.shields.io/static/v1?label=patreon&message=support&color=FF6952&logo=patreon&logoColor=cccccc&labelColor=2A3037" alt="Support on Patreon"/></a>
 </p>
 
 <br>
 
-Myxer is a lightweight, powerful Volume Mixer built in Rust, that uses modern UI design to create a seamless user experience. Inputs, Outputs, Playback Streams, and Recording streams can all be managed with Myxer, giving you complete control over your system audio.
+Myxer is a lightweight, powerful Volume Mixer built with modern UI design for a seamless user experience. Devices, Streams, and even Card profiles can all be managed with Myxer, providing a complete replacement for your system Volume Mixer.
 
 <br>
 <br>
 
 <img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="625">
 
-### Responsive
+### Adaptive
 
 Myxer adapts to your selected GTK theme so that it fits seamlessly into your stock applications.
 
-Additionally, PulseAudio plugin can be easily configured to open Myxer when you click the "Audio Mixer" entry on the popup menu, so it can behave like a stock app, too!
+Additionally, one can easily configure PulseAudio panel plugins to open Myxer when you click the "Audio Mixer" entry on the popup menu so that it behaves like a stock app, too!
 
 <br clear="left">
 <br>
@@ -36,39 +37,22 @@ Additionally, PulseAudio plugin can be easily configured to open Myxer when you 
 
 ### Advanced
 
-Behind the context menu you can find options to show individual audio channels, and even configure Audio Card profiles in the App. There's no need to pavucontrol anymore.
+Behind the context menu, there are options to show individual audio channels and even configure Audio Card profiles. There's no need for pavucontrol anymore.
 
 <br clear="right">
 <br>
 <br>
 
-<h2 align="center">Open Source</h2>
+<h3 align="center">Open Source</h2>
 
-Myxer is licensed permissively, under the [GNU Lesser Public License v3](https://github.com/Aurailus/Myxer/blob/master/LICENSE.md). It's under active development, and all issues and pull requests will be responded to promptly. It's also super lightweight, and should only take an hour or two to read through the source code.
+Myxer is licensed under the [GNU General Public License v3](https://github.com/Aurailus/Myxer/blob/master/LICENSE.md). It's being actively developed, and all issues and pull requests will be responded to promptly. It's also super lightweight, and should only take an hour or two to read through the source code, if that's your sort of thing. See [Contributing](https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md) for more details.
 
 <br>
 <br>
 
 <h3 align="center">Heard enough? Download the <a href="https://github.com/Aurailus/Myxer/releases">Latest Release</a> now.</h3>
 
-<p align="center"><em>Or, keep reading for alternative methods.</em></p>
-
-<br>
-<br>
-
-### Building
-
-Download the repository, and Cargo, and then simply run `cargo build --release` in the root directory.
-
-Major releases are available on the [Releases](https://github.com/Aurailus/Myxer/releases) page. If you want something more breaking edge, you can download an artifact of the lastest commit [here](https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip). These artifacts are untested, YMMV.
-
-#### Building for Development 
-
-Call `cargo run`, (or `nodemon`, if you have that installed) in the root directory, and watch it go.
-
-### Contributing
- 
-Pull Requests are welcome and appreciated. If you're unsure of whether a feature will be accepted, open an issue and I'll get back to you as soon as I can.  
+<p align="center"><a href="https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip">Latest Artifact</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/BUILDING.md">Building</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md">Contributing</a></p>
 
 <br>
 <br>
