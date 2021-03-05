@@ -1,8 +1,19 @@
 [package]
 name = "myxer"
 version = "1.0.0"
+description = "A modern Volume Mixer for PulseAudio"
+readme = "README.md"
+license = "GPL-3.0"
 authors = [ "Auri <me@auri.xyz>" ]
+homepage = "https://myxer.aurailus.com"
+repository = "https://github.com/Aurailus/Myxer"
 edition = "2018"
+
+[package.metadata.deb]
+name = "Myxer"
+section = "sound"
+copyright = "(c) Auri Collings, 2021"
+extended-description-file = "README.txt"
 
 [dependencies]
 gdk = "0.13.2"

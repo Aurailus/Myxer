@@ -66,6 +66,65 @@ fn build() -> MeterWidgets {
 	root.set_hexpand(false);
 	root.set_size_request(86, -1);
 
+	let prefs = gtk::PopoverMenu::new();
+
+	let top_evt = gtk::Button::new();
+	top_evt.set_widget_name("top");
+	top_evt.get_style_context().add_class("flat");
+	let prefs_clone = prefs.clone();
+	top_evt.connect_clicked(move |_| {
+		println!("Icon clicked~");
+		prefs_clone.popup();
+		prefs_clone.show_all();
+		prefs_clone.get_children().iter().next().unwrap().show_all();
+	});
+
+	prefs.set_relative_to(Some(&top_evt));
+	prefs.set_border_width(8);
+
+	let split_channels = gtk::ModelButton::new();
+	split_channels.set_property_text(Some("Split Channels"));
+	split_channels.set_action_name(Some("app.split_channels"));
+
+	let submenu_open = gtk::ModelButton::new();
+	submenu_open.set_property("menu-name", &"more").unwrap();
+	submenu_open.set_property_text(Some("Set Output Device"));
+
+	let menu = gtk::Box::new(gtk::Orientation::Vertical, 0);
+	menu.add(&split_channels);
+	menu.add(&submenu_open);
+	prefs.add(&menu);
+
+	let submenu = gtk::Box::new(gtk::Orientation::Vertical, 0);
+	let back = gtk::ModelButton::new();
+	back.set_property_text(Some("Set Output Device"));
+	back.set_property("inverted", &true).unwrap();
+	back.set_property("centered", &true).unwrap();
+	back.set_property("menu-name", &"main").unwrap();
+	// back.set_action_name(Some("app.card_profiles"));
+
+
+	submenu.pack_start(&back, false, false, 0);
+	submenu.pack_start(&gtk::SeparatorMenuItem::new(), false, false, 4);
+
+	let d = gtk::ModelButton::new();
+	d.set_property_text(Some("Headphones"));
+	submenu.pack_start(&d, false, false, 0);
+	let d = gtk::ModelButton::new();
+	d.set_property_text(Some("Fucki"));
+	submenu.pack_start(&d, false, false, 0);
+	let d = gtk::ModelButton::new();
+	d.set_property_text(Some("Dick"));
+	submenu.pack_start(&d, false, false, 0);
+
+	prefs.add(&submenu);
+	prefs.set_child_submenu(&submenu, Some("more"));
+
+
+
+	let top_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+	top_evt.add(&top_container);
+
 	let icon = gtk::Image::from_icon_name(Some("audio-volume-muted-symbolic"), gtk::IconSize::Dnd);
 
 	let label = gtk::Label::new(Some("Unknown"));
@@ -78,6 +137,9 @@ fn build() -> MeterWidgets {
 	label.set_max_width_chars(8);
 	label.set_line_wrap(true);
 	label.set_lines(2);
+
+	top_container.pack_end(&label, false, true, 0);
+	top_container.pack_end(&icon, false, false, 4);
 
 	let select = gtk::Button::new();
 	select.set_widget_name("app_select");
@@ -103,8 +165,7 @@ fn build() -> MeterWidgets {
 
 	root.pack_end(&status_box, false, false, 4);
 	root.pack_end(&scale_box_o, true, true, 2);
-	root.pack_end(&label, false, true, 0);
-	root.pack_end(&icon, false, false, 4);
+	root.pack_start(&top_evt, false, false, 0);
 
 	MeterWidgets {
 		root,

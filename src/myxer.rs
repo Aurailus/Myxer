@@ -16,14 +16,17 @@ struct Container {
 
 struct Meters {
 	pub sink: Meter,
-	pub active_sink: Option<u32>,
+	pub sink_box: gtk::Box,
 	pub sink_inputs: HashMap<u32, Meter>,
 	pub sink_inputs_box: gtk::Box,
 	
 	pub source: Meter,
-	pub active_source: Option<u32>,
+	pub source_box: gtk::Box,
 	pub source_outputs: HashMap<u32, Meter>,
 	pub source_outputs_box: gtk::Box,
+
+	pub active_sink: Option<u32>,
+	pub active_source: Option<u32>,
 
 	pub show_visualizers: bool,
 	pub separate_channels: bool
@@ -32,22 +35,32 @@ struct Meters {
 impl Meters {
 	pub fn new() -> Self {
 		let sink = Meter::new(None);
-		sink.widget.get_style_context().add_class("outer");
-		sink.widget.get_style_context().add_class("bordered");
+
+		let sink_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		sink_box.get_style_context().add_class("pad_side");
+		sink_box.add(&sink.widget);
 
 		let source = Meter::new(None);
-		source.widget.get_style_context().add_class("outer");
-		source.widget.get_style_context().add_class("bordered");
+
+		let source_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		source_box.get_style_context().add_class("pad_side");
+		source_box.add(&source.widget);
+
+		let sink_inputs_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		sink_inputs_box.get_style_context().add_class("pad_side");
+		
+		let source_outputs_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		source_outputs_box.get_style_context().add_class("pad_side");
 
 		Meters {
 			sink, source,
+			sink_box, source_box,
+			sink_inputs_box, source_outputs_box,
 			active_sink: None, active_source: None,
+			sink_inputs: HashMap::new(),
+			source_outputs: HashMap::new(),
 			show_visualizers: true,
 			separate_channels: false,
-			sink_inputs: HashMap::new(),
-			sink_inputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
-			source_outputs: HashMap::new(),
-			source_outputs_box: gtk::Box::new(gtk::Orientation::Horizontal, 0)
 		}
 	}
 
@@ -177,8 +190,7 @@ impl Myxer {
 			{
 				let pulse_clone = pulse.clone();
 				let meters_clone = meters.clone();
-				let sink_meter = &mut meters.borrow_mut().sink;
-				sink_meter.connect_label_clicked(move |_| {
+				meters.borrow_mut().sink.connect_label_clicked(move |_| {
 					let menu = gtk::Menu::new();
 					let pulse = pulse_clone.borrow();
 
@@ -215,10 +227,11 @@ impl Myxer {
 					menu.popup_easy(0, 0);
 				});
 
-				output.pack_start(&sink_meter.widget, false, false, 0);
-				output.set_border_width(4);
+				output.pack_start(&meters.borrow_mut().sink_box, false, false, 0);
+				// output.set_border_width(4);
 			}
 
+			output.pack_start(&gtk::Separator::new(gtk::Orientation::Vertical), false, true, 0);
 
 			let output_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
 			output_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
@@ -230,8 +243,7 @@ impl Myxer {
 			{
 				let pulse_clone = pulse.clone();
 				let meters_clone = meters.clone();
-				let source_meter = &mut meters.borrow_mut().source;
-				source_meter.connect_label_clicked(move |_| {
+				meters.borrow_mut().source.connect_label_clicked(move |_| {
 					let menu = gtk::Menu::new();
 					let pulse = pulse_clone.borrow();
 
@@ -268,9 +280,10 @@ impl Myxer {
 					menu.popup_easy(0, 0);
 				});
 
-				input.pack_start(&source_meter.widget, false, false, 0);
-				input.set_border_width(4);
+				input.pack_start(&meters.borrow_mut().source_box, false, false, 0);
 			}
+
+			input.pack_start(&gtk::Separator::new(gtk::Orientation::Vertical), false, true, 0);
 
 			let input_scroller = gtk::ScrolledWindow::new::<gtk::Adjustment, gtk::Adjustment>(None, None);
 			input_scroller.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Never);
