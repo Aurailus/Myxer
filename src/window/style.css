@@ -32,10 +32,6 @@ headerbar box:last-child separator {
 	border-image-source: none;
 }
 
-scrollbar {
-	border-color: @border_color;
-}
-
 /* At some point, figure out how to replace
 the hardcoded values with theme colors. */
 
@@ -68,7 +64,7 @@ Value should be dynamically determined later. */
 }
 
 #meter #app_label {
-	padding: 0 4px;
+	padding: 0 3px;
 }
 
 #meter #app_select {
@@ -87,7 +83,7 @@ Value should be dynamically determined later. */
 }
 
 #meter #mute_toggle label {
-	margin-left: 4px;
+	margin-left: 3px;
 }
 
 #meter #mute_toggle.muted {

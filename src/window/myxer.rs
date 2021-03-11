@@ -83,7 +83,6 @@ impl Myxer {
 		let header = gtk::HeaderBar::new();
 		let stack = gtk::Stack::new();
 		
-		// Window Config & Header Bar
 		{
 			window.set_title("Volume Mixer");
 			window.set_icon_name(Some("multimedia-volume-control"));
@@ -116,7 +115,6 @@ impl Myxer {
 			window.set_titlebar(Some(&header));
 		}
 
-		// Preferences Button & Popup Menu
 		{
 			let prefs_button = gtk::Button::from_icon_name(Some("open-menu-symbolic"), gtk::IconSize::SmallToolbar);
 			prefs_button.get_style_context().add_class("flat");
@@ -149,11 +147,6 @@ impl Myxer {
 
 			prefs_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 4);
 
-			// let help = gtk::ModelButton::new();
-			// help.set_property_text(Some("Help"));
-			// help.set_action_name(Some("app.help"));
-			// prefs_box.add(&help);
-
 			let about = gtk::ModelButton::new();
 			about.set_property_text(Some("About Myxer"));
 			about.set_action_name(Some("app.about"));
@@ -163,58 +156,12 @@ impl Myxer {
 			prefs_button.connect_clicked(move |_| prefs.popup());
 		}
 
-		// Connect Pulse
-
 		pulse.borrow_mut().connect();
-
 		let meters = Shared::new(Meters::new(pulse));
 
-		// Window Contents
 		{
 			let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-			{
-				// let pulse_clone = pulse.clone();
-				// let meters_clone = meters.clone();
-				// meters.borrow_mut().sink.connect_label_clicked(move |_| {
-				// 	let menu = gtk::Menu::new();
-				// 	let pulse = pulse_clone.borrow();
-
-				// 	let mut last: Option<gtk::RadioMenuItem> = None;
-				// 	for (i, v) in pulse.sinks.iter() {
-				// 		let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
-				// 		if let Some(last) = last { button.join_group(Some(&last)) }
-				// 		last = Some(button.clone());
-				// 		menu.add(&button);
-						
-				// 		if let Some(a) = meters_clone.borrow().active_sink {
-				// 			if a == *i { button.set_active(true) }
-				// 		}
-						
-				// 		let i = *i;
-				// 		let meters = meters_clone.clone();
-				// 		button.connect_toggled(move |c| {
-				// 			if !c.get_active() { return }
-				// 			meters.borrow_mut().set_active_sink(i);
-				// 		});
-				// 	}
-
-				// 	menu.add(&gtk::SeparatorMenuItem::new());
-
-				// 	let name = meters_clone.borrow().sink.get_name().to_owned();
-				// 	let button = gtk::CheckMenuItem::with_label("Default Output Device");
-				// 	button.set_active(name == pulse.default_sink);
-				// 	button.set_sensitive(!button.get_active());
-				// 	let pulse = pulse_clone.clone();
-				// 	button.connect_toggled(move |_| pulse.borrow().set_default_sink(&name));
-				// 	menu.add(&button);
-
-				// 	menu.show_all();
-				// 	menu.popup_easy(0, 0);
-				// });
-
-				output.pack_start(&meters.borrow_mut().sink_box, false, false, 0);
-				// output.set_border_width(4);
-			}
+			output.pack_start(&meters.borrow_mut().sink_box, false, false, 0);
 
 			output.pack_start(&gtk::Separator::new(gtk::Orientation::Vertical), false, true, 0);
 
@@ -225,48 +172,7 @@ impl Myxer {
 			output_scroller.add(&meters.borrow().sink_inputs_box);
 
 			let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-			{
-				// let pulse_clone = pulse.clone();
-				// let meters_clone = meters.clone();
-				// meters.borrow_mut().source.connect_label_clicked(move |_| {
-				// 	let menu = gtk::Menu::new();
-				// 	let pulse = pulse_clone.borrow();
-
-				// 	let mut last: Option<gtk::RadioMenuItem> = None;
-				// 	for (i, v) in pulse.sources.iter() {
-				// 		let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
-				// 		if let Some(last) = last { button.join_group(Some(&last)) }
-				// 		last = Some(button.clone());
-				// 		menu.add(&button);
-						
-				// 		if let Some(a) = meters_clone.borrow().active_source {
-				// 			if a == *i { button.set_active(true) }
-				// 		}
-
-				// 		let i = *i;
-				// 		let meters = meters_clone.clone();
-				// 		button.connect_toggled(move |c| {
-				// 			if !c.get_active() { return }
-				// 			meters.borrow_mut().set_active_source(i);
-				// 		});
-				// 	}
-
-				// 	menu.add(&gtk::SeparatorMenuItem::new());
-
-				// 	let name = meters_clone.borrow().source.get_name().to_owned();
-				// 	let button = gtk::CheckMenuItem::with_label("Default Input Device");
-				// 	button.set_active(name == pulse.default_source);
-				// 	button.set_sensitive(!button.get_active());
-				// 	let pulse = pulse_clone.clone();
-				// 	button.connect_toggled(move |_| pulse.borrow().set_default_source(&name));
-				// 	menu.add(&button);
-
-				// 	menu.show_all();
-				// 	menu.popup_easy(0, 0);
-				// });
-
-				input.pack_start(&meters.borrow_mut().source_box, false, false, 0);
-			}
+			input.pack_start(&meters.borrow_mut().source_box, false, false, 0);
 
 			input.pack_start(&gtk::Separator::new(gtk::Orientation::Vertical), false, true, 0);
 
@@ -285,7 +191,6 @@ impl Myxer {
 
 		let profiles = Shared::new(Container { profiles: None });
 
-		// Actions
 		{
 			let actions = gio::SimpleActionGroup::new();
 			window.insert_action_group("app", Some(&actions));
@@ -328,9 +233,21 @@ impl Myxer {
 
 		if self.pulse.borrow_mut().update() {
 			let pulse = self.pulse.borrow();
+
 			let mut meters = self.meters.borrow_mut();
+
+			let offset = meters.sink.widget.get_allocation().height +
+				meters.sink.widget.get_margin_bottom() - meters.sink_inputs_box.get_allocation().height;
+			if offset != meters.sink.widget.get_margin_bottom() { meters.sink.widget.set_margin_bottom(offset) }
+
+			let offset = meters.source.widget.get_allocation().height +
+				meters.source.widget.get_margin_bottom() - meters.source_outputs_box.get_allocation().height;
+			if offset != meters.source.widget.get_margin_bottom() { meters.source.widget.set_margin_bottom(offset) }
+
+			
 			let show = meters.show_visualizers;
 			let separate = meters.separate_channels;
+
 
 			if let Some(sink) = pulse.sinks.get(&pulse.active_sink) {
 				meters.sink.set_data(&sink.data);
