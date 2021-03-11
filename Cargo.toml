@@ -13,7 +13,7 @@ edition = "2018"
 name = "Myxer"
 section = "sound"
 copyright = "(c) Auri Collings, 2021"
-extended-description-file = "README.txt"
+extended-description-file = "package.txt"
 
 [dependencies]
 gdk = "0.13.2"
@@ -22,7 +22,7 @@ pango = "0.9.1"
 colorsys = "0.6.3"
 slice_as_array = "1.1.0"
 
-[dependencies.pulse]
+[dependencies.libpulse]
 version = "2.23.0"
 package = "libpulse-binding"
 

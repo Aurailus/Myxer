@@ -1,9 +1,9 @@
 use gtk;
 use gtk::prelude::*;
-use pulse::volume::{ Volume, ChannelVolumes };
+use libpulse::volume::{ Volume, ChannelVolumes };
 
 use crate::shared::Shared;
-use crate::pulse_controller::{ PulseController, StreamType };
+use crate::pulse::{ Pulse, StreamType };
 
 // The maximum natural volume, i.e. 100%
 pub const MAX_NATURAL_VOL: u32 = 65536;
@@ -82,7 +82,7 @@ impl dyn Meter {
 		scale
 	}
 
-	pub fn build_scales(pulse: &Shared<PulseController>, data: &MeterData, split: bool) -> gtk::Box {
+	pub fn build_scales(pulse: &Shared<Pulse>, data: &MeterData, split: bool) -> gtk::Box {
 		let t = data.t;
 		let index = data.index;
 

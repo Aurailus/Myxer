@@ -2,17 +2,16 @@ use gio::prelude::*;
 
 mod card;
 mod meter;
-mod style;
+mod pulse;
 mod window;
 mod shared;
-mod pulse_controller;
 
+use pulse::Pulse;
 use window::Myxer;
 use shared::Shared;
-use pulse_controller::PulseController;
 
 fn main() {
-	let pulse = Shared::new(PulseController::new());
+	let pulse = Shared::new(Pulse::new());
 	
 	let app = gtk::Application::new(Some("com.aurailus.myxer"), Default::default())
 		.expect("Failed to initialize GTK application.");
@@ -27,7 +26,7 @@ fn main() {
 	pulse.borrow_mut().cleanup();
 }
 
-fn activate(app: &gtk::Application, pulse: &Shared<PulseController>) {
+fn activate(app: &gtk::Application, pulse: &Shared<Pulse>) {
 	let mut myxer = Myxer::new(app, pulse);
 
 	glib::timeout_add_local(1000 / 30, move || {

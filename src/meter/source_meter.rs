@@ -2,8 +2,8 @@ use gtk;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
 
+use crate::pulse::Pulse;
 use crate::shared::Shared;
-use crate::pulse_controller::PulseController;
 use super::meter::{ Meter, MeterWidgets, MeterData };
 use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS };
 
@@ -14,7 +14,7 @@ pub struct SourceMeter {
 	data: MeterData,
 	widgets: MeterWidgets,
 	// meters: Shared<Meters>,
-	pulse: Shared<PulseController>,
+	pulse: Shared<Pulse>,
 
 	split: bool,
 	peak: Option<u32>,
@@ -24,7 +24,7 @@ pub struct SourceMeter {
 }
 
 impl SourceMeter {
-	pub fn new(pulse: Shared<PulseController>) -> Self {
+	pub fn new(pulse: Shared<Pulse>) -> Self {
 		let widgets = Meter::build_meter();
 
 		Self {
@@ -77,12 +77,13 @@ impl SourceMeter {
 		}
 	}
 
-	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<PulseController>, name: &str) {
+	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<Pulse>, name: &str) {
 		let pulse = pulse_shr.borrow_mut();
 		let root = gtk::PopoverMenu::new();
 		root.set_border_width(6);
 
 		let menu = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		menu.set_size_request(132, -1);
 		root.add(&menu);
 		
 		let split_channels = gtk::ModelButton::new();
@@ -92,7 +93,7 @@ impl SourceMeter {
 
 		let set_default = gtk::ModelButton::new();
 		set_default.set_property_role(gtk::ButtonRole::Check);
-		set_default.set_property_text(Some("Default Input"));
+		set_default.set_property_text(Some("Set as Default"));
 		set_default.set_property_active(pulse.default_source == name);
 		set_default.set_sensitive(pulse.default_source != name);
 			

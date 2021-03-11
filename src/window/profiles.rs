@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use gtk::prelude::*;
 
 use crate::card::Card;
+use crate::pulse::Pulse;
 use crate::shared::Shared;
-use crate::pulse_controller::PulseController;
 
 struct Container {
 	live: bool
@@ -23,13 +23,13 @@ impl Cards {
 
 pub struct Profiles {
 	cards: Shared<Cards>,
-	pulse: Shared<PulseController>,
+	pulse: Shared<Pulse>,
 
 	live: Shared<Container>
 }
 
 impl Profiles {
-	pub fn new(parent: &gtk::ApplicationWindow, pulse: &Shared<PulseController>) -> Self {
+	pub fn new(parent: &gtk::ApplicationWindow, pulse: &Shared<Pulse>) -> Self {
 		let dialog = gtk::Dialog::with_buttons(Some("Card Profiles"), Some(parent), gtk::DialogFlags::all(), &[]);
 		dialog.set_border_width(0);
 

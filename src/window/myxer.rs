@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use gtk::prelude::*;
 use gio::prelude::*;
 
-use crate::style;
+use super::style;
+use crate::pulse::Pulse;
 use crate::shared::Shared;
 use super::{ about, Profiles };
-use crate::pulse_controller::PulseController;
 use crate::meter::{ Meter, SinkMeter, SourceMeter, StreamMeter };
 
 struct Container {
@@ -32,7 +32,7 @@ pub struct Meters {
 }
 
 impl Meters {
-	pub fn new(pulse: &Shared<PulseController>) -> Self {
+	pub fn new(pulse: &Shared<Pulse>) -> Self {
 		let sink = SinkMeter::new(pulse.clone());
 
 		let sink_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -85,14 +85,14 @@ impl Meters {
 }
 
 pub struct Myxer {
-	pulse: Shared<PulseController>,
+	pulse: Shared<Pulse>,
 	meters: Shared<Meters>,
 
 	profiles: Shared<Container>
 }
 
 impl Myxer {
-	pub fn new(app: &gtk::Application, pulse: &Shared<PulseController>) -> Self {
+	pub fn new(app: &gtk::Application, pulse: &Shared<Pulse>) -> Self {
 		let window = gtk::ApplicationWindow::new(app);
 		let header = gtk::HeaderBar::new();
 		let stack = gtk::Stack::new();

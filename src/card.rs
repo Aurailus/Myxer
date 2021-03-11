@@ -3,8 +3,8 @@ use gtk::prelude::*;
 use glib::translate::ToGlib;
 use glib::translate::FromGlib;
 
+use crate::pulse::Pulse;
 use crate::shared::Shared;
-use crate::pulse_controller::PulseController;
 
 
 /** Information relating to a Card. */
@@ -78,12 +78,12 @@ pub struct Card {
 	widgets: CardWidgets,
 
 	data: CardData,
-	pulse: Option<Shared<PulseController>>,
+	pulse: Option<Shared<Pulse>>,
 	combo_connect_id: Option<glib::signal::SignalHandlerId>,
 }
 
 impl Card {
-	pub fn new(pulse: Option<Shared<PulseController>>) -> Self {
+	pub fn new(pulse: Option<Shared<Pulse>>) -> Self {
 		let widgets = build();
 		Self {
 			widget: widgets.root.clone(), widgets,

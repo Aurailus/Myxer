@@ -1,15 +1,15 @@
 use slice_as_array::{ slice_as_array, slice_as_array_transmute };
 
-use pulse::def::BufferAttr;
-use pulse::proplist::Proplist;
-use pulse::callbacks::ListResult;
-use pulse::volume::ChannelVolumes;
-use pulse::sample::{ Spec, Format };
-use pulse::mainloop::threaded::Mainloop;
-use pulse::context::{ Context, FlagSet as CtxFlagSet };
-use pulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
-use pulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
-use pulse::context::introspect::{ ServerInfo, SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo, CardInfo };
+use libpulse::def::BufferAttr;
+use libpulse::callbacks::ListResult;
+use libpulse::volume::ChannelVolumes;
+use libpulse::sample::{ Spec, Format };
+use libpulse::mainloop::threaded::Mainloop;
+use libpulse::proplist::{ Proplist, properties };
+use libpulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
+use libpulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
+use libpulse::context::{ Context, FlagSet as CtxFlagSet, State as ContextState };
+use libpulse::context::introspect::{ ServerInfo, SourceInfo, SinkInfo, SinkInputInfo, SourceOutputInfo, CardInfo };
 
 use std::collections::HashMap;
 use std::sync::mpsc::{ channel, Sender, Receiver };
@@ -69,7 +69,7 @@ struct Channel<T> { tx: Sender<T>, rx: Receiver<T> }
  * Stores data for all known streams, allowing public access.
  */
 
-pub struct PulseController {
+pub struct Pulse {
 	mainloop: Shared<Mainloop>,
 	context: Shared<Context>,
 	channel: Channel<TxMessage>,
@@ -84,7 +84,7 @@ pub struct PulseController {
 	pub cards: HashMap<u32, CardData>,
 }
 
-impl PulseController {
+impl Pulse {
 
 	/**
 	 * Create a new pulse controller, configuring
@@ -93,7 +93,7 @@ impl PulseController {
 
 	pub fn new() -> Self {
 		let mut proplist = Proplist::new().unwrap();
-		proplist.set_str(pulse::proplist::properties::APPLICATION_NAME, "Myxer").unwrap();
+		proplist.set_str(properties::APPLICATION_NAME, "Myxer").unwrap();
 
 		let mainloop = Shared::new(Mainloop::new().expect("Failed to initialize pulse mainloop."));
 
@@ -103,7 +103,7 @@ impl PulseController {
 
 		let ( tx, rx ) = channel::<TxMessage>();
 
-		PulseController {
+		Pulse {
 			mainloop, context,
 			channel: Channel { tx, rx },
 
@@ -134,9 +134,9 @@ impl PulseController {
 
 		ctx.set_state_callback(Some(Box::new(move || {
 			match unsafe { (*ctx_shr_ref.as_ptr()).get_state() } {
-				pulse::context::State::Ready |
-				pulse::context::State::Failed |
-				pulse::context::State::Terminated =>
+				ContextState::Ready |
+				ContextState::Failed |
+				ContextState::Terminated =>
 					unsafe { (*mainloop_shr_ref.as_ptr()).signal(false); },
 				_ => {},
 			}
@@ -150,13 +150,13 @@ impl PulseController {
 
 		loop {
 			match ctx.get_state() {
-				pulse::context::State::Ready => {
+				ContextState::Ready => {
 					ctx.set_state_callback(None);
 					mainloop.unlock();
 					break;
 				},
-				pulse::context::State::Failed |
-				pulse::context::State::Terminated => {
+				ContextState::Failed |
+				ContextState::Terminated => {
 					eprintln!("Context state failed/terminated, quitting...");
 					mainloop.unlock();
 					mainloop.stop();

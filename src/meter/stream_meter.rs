@@ -3,8 +3,8 @@ use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
 
 use crate::shared::Shared;
+use crate::pulse::{ Pulse, StreamType };
 use super::meter::{ Meter, MeterWidgets, MeterData };
-use crate::pulse_controller::{ PulseController, StreamType };
 use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS, OUTPUT_ICONS };
 
 // A meter for an audio input / output stream.
@@ -13,7 +13,7 @@ pub struct StreamMeter {
 
 	data: MeterData,
 	widgets: MeterWidgets,
-	pulse: Shared<PulseController>,
+	pulse: Shared<Pulse>,
 
 	split: bool,
 	peak: Option<u32>,
@@ -22,7 +22,7 @@ pub struct StreamMeter {
 }
 
 impl StreamMeter {
-	pub fn new(pulse: Shared<PulseController>) -> Self {
+	pub fn new(pulse: Shared<Pulse>) -> Self {
 		let widgets = Meter::build_meter();
 		Self {
 			widget: widgets.root.clone(),
