@@ -86,10 +86,10 @@ impl SourceMeter {
 		menu.set_size_request(132, -1);
 		root.add(&menu);
 		
-		let split_channels = gtk::ModelButton::new();
-		split_channels.set_property_text(Some("Split Channels"));
-		split_channels.set_action_name(Some("app.split_channels"));
-		menu.add(&split_channels);
+		// let split_channels = gtk::ModelButton::new();
+		// split_channels.set_property_text(Some("Split Channels"));
+		// split_channels.set_action_name(Some("app.split_channels"));
+		// menu.add(&split_channels);
 
 		let set_default = gtk::ModelButton::new();
 		set_default.set_property_role(gtk::ButtonRole::Check);
