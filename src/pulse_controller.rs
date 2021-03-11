@@ -430,15 +430,13 @@ impl PulseController {
 	 */
 
 	pub fn cleanup(&mut self) {
-		while let Some((index, _)) = self.sinks.iter().enumerate().next() { self.remove_stream(StreamType::Sink, index as u32) }
-		while let Some((index, _)) = self.sink_inputs.iter().enumerate().next() { self.remove_stream(StreamType::SinkInput, index as u32) }
-		while let Some((index, _)) = self.sources.iter().enumerate().next() { self.remove_stream(StreamType::Source, index as u32) }
-		while let Some((index, _)) = self.source_outputs.iter().enumerate().next() { self.remove_stream(StreamType::SourceOutput, index as u32) }
+		while let Some((i, _)) = self.sinks.iter().next() { let i = *i; self.remove_stream(StreamType::Sink, i) }
+		while let Some((i, _)) = self.sink_inputs.iter().next() { let i = *i; self.remove_stream(StreamType::SinkInput, i) }
+		while let Some((i, _)) = self.sources.iter().next() { let i = *i; self.remove_stream(StreamType::Source, i) }
+		while let Some((i, _)) = self.source_outputs.iter().next() { let i = *i; self.remove_stream(StreamType::SourceOutput, i) }
 		
 		let mut mainloop = self.mainloop.borrow_mut();
-		mainloop.lock();
 		mainloop.stop();
-		mainloop.unlock();
 	}
 
 
@@ -496,6 +494,7 @@ impl PulseController {
 	 */
 
 	fn remove_stream(&mut self, t: StreamType, index: u32) {
+		// println!("{:?} {}", t, index);
 		let stream_opt = match t {
 			StreamType::Sink => self.sinks.get_mut(&index),
 			StreamType::SinkInput => self.sink_inputs.get_mut(&index),
