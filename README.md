@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="https://github.com/Aurailus/Myxer/releases"><img src="https://github.com/Aurailus/Myxer/workflows/release/badge.svg" alt="Releases"/></a>
-  <a href="https://github.com/Aurailus/Myxer/commits/master"><img src="https://img.shields.io/github/commit-activity/m/aurailus/myxer.svg?logo=github&labelColor=2A3037&label=commit%20activity" alt="Commit Activity"/></a>
-  <a href="https://aurail.us/discord"><img src="https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=white&labelColor=2A3037" alt="Join Discord"/></a>
+  <a href="https://github.com/Aurailus/Myxer/commits/master"><img src="https://img.shields.io/github/commit-activity/m/aurailus/myxer.svg?logo=github&logoColor=cccccc&labelColor=2A3037&label=commit%20activity" alt="Commit Activity"/></a>
+  <a href="https://aurail.us/discord"><img src="https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=cccccc&labelColor=2A3037" alt="Join Discord"/></a>
   <a href="https://patreon.com/Aurailus"><img src="https://img.shields.io/static/v1?label=patreon&message=support&color=FF6952&logo=patreon&logoColor=cccccc&labelColor=2A3037" alt="Support on Patreon"/></a>
 </p>
 

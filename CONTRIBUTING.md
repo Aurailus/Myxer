@@ -10,7 +10,7 @@ Make sure you've read through the codebase and understand each component's purpo
 
 ## Code Style
 
-File names and variable names are `snake_case'd, structs and traits are `PascalCase`. When at-all possible, leave JSDoc style comments above your functions and structs, with two newlines separating them from the previous code block and one separating them from the block they refer to. If something mandates an unclear solution, leave a comment behind for the contributors that come after.
+File names and variable names are `snake_case`'d, structs and traits are `PascalCase`. When at-all possible, leave JSDoc style comments above your functions and structs, with two newlines separating them from the previous code block and one separating them from the block they refer to. If something mandates an unclear solution, leave a comment behind for the contributors that come after.
 
 ## License
 
