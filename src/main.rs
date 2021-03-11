@@ -1,15 +1,13 @@
 use gio::prelude::*;
 
 mod card;
-mod myxer;
-mod style;
 mod meter;
-mod about;
+mod style;
+mod window;
 mod shared;
-mod profiles;
 mod pulse_controller;
 
-use myxer::Myxer;
+use window::Myxer;
 use shared::Shared;
 use pulse_controller::PulseController;
 

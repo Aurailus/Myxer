@@ -3,26 +3,25 @@ use std::collections::HashMap;
 use gtk::prelude::*;
 use gio::prelude::*;
 
-use crate::about;
 use crate::style;
-use crate::meter::Meter;
 use crate::shared::Shared;
-use crate::profiles::Profiles;
+use super::{ about, Profiles };
 use crate::pulse_controller::PulseController;
+use crate::meter::{ Meter, SinkMeter, SourceMeter, StreamMeter };
 
 struct Container {
 	profiles: Option<Profiles>
 }
 
 struct Meters {
-	pub sink: Meter,
+	pub sink: SinkMeter,
 	pub sink_box: gtk::Box,
-	pub sink_inputs: HashMap<u32, Meter>,
+	pub sink_inputs: HashMap<u32, StreamMeter>,
 	pub sink_inputs_box: gtk::Box,
 	
-	pub source: Meter,
+	pub source: SourceMeter,
 	pub source_box: gtk::Box,
-	pub source_outputs: HashMap<u32, Meter>,
+	pub source_outputs: HashMap<u32, StreamMeter>,
 	pub source_outputs_box: gtk::Box,
 
 	pub active_sink: Option<u32>,
@@ -33,14 +32,14 @@ struct Meters {
 }
 
 impl Meters {
-	pub fn new() -> Self {
-		let sink = Meter::new(None);
+	pub fn new(pulse: &Shared<PulseController>) -> Self {
+		let sink = SinkMeter::new(pulse.clone());
 
 		let sink_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		sink_box.get_style_context().add_class("pad_side");
 		sink_box.add(&sink.widget);
 
-		let source = Meter::new(None);
+		let source = SourceMeter::new(pulse.clone());
 
 		let source_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		source_box.get_style_context().add_class("pad_side");
@@ -75,12 +74,12 @@ impl Meters {
 	}
 
 	fn set_active_source(&mut self, ind: u32) {
-		self.source.set_connection(None);
+		// self.source.set_connection(None);
 		self.active_source = Some(ind);
 	}
 
 	fn set_active_sink(&mut self, ind: u32) {
-		self.sink.set_connection(None);
+		// self.sink.set_connection(None);
 		self.active_sink = Some(ind);
 	}
 }
@@ -182,7 +181,7 @@ impl Myxer {
 
 		pulse.borrow_mut().connect();
 
-		let meters = Shared::new(Meters::new());
+		let meters = Shared::new(Meters::new(pulse));
 
 		// Window Contents
 		{
@@ -190,42 +189,42 @@ impl Myxer {
 			{
 				let pulse_clone = pulse.clone();
 				let meters_clone = meters.clone();
-				meters.borrow_mut().sink.connect_label_clicked(move |_| {
-					let menu = gtk::Menu::new();
-					let pulse = pulse_clone.borrow();
+				// meters.borrow_mut().sink.connect_label_clicked(move |_| {
+				// 	let menu = gtk::Menu::new();
+				// 	let pulse = pulse_clone.borrow();
 
-					let mut last: Option<gtk::RadioMenuItem> = None;
-					for (i, v) in pulse.sinks.iter() {
-						let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
-						if let Some(last) = last { button.join_group(Some(&last)) }
-						last = Some(button.clone());
-						menu.add(&button);
+				// 	let mut last: Option<gtk::RadioMenuItem> = None;
+				// 	for (i, v) in pulse.sinks.iter() {
+				// 		let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
+				// 		if let Some(last) = last { button.join_group(Some(&last)) }
+				// 		last = Some(button.clone());
+				// 		menu.add(&button);
 						
-						if let Some(a) = meters_clone.borrow().active_sink {
-							if a == *i { button.set_active(true) }
-						}
+				// 		if let Some(a) = meters_clone.borrow().active_sink {
+				// 			if a == *i { button.set_active(true) }
+				// 		}
 						
-						let i = *i;
-						let meters = meters_clone.clone();
-						button.connect_toggled(move |c| {
-							if !c.get_active() { return }
-							meters.borrow_mut().set_active_sink(i);
-						});
-					}
+				// 		let i = *i;
+				// 		let meters = meters_clone.clone();
+				// 		button.connect_toggled(move |c| {
+				// 			if !c.get_active() { return }
+				// 			meters.borrow_mut().set_active_sink(i);
+				// 		});
+				// 	}
 
-					menu.add(&gtk::SeparatorMenuItem::new());
+				// 	menu.add(&gtk::SeparatorMenuItem::new());
 
-					let name = meters_clone.borrow().sink.get_name().to_owned();
-					let button = gtk::CheckMenuItem::with_label("Default Output Device");
-					button.set_active(name == pulse.default_sink);
-					button.set_sensitive(!button.get_active());
-					let pulse = pulse_clone.clone();
-					button.connect_toggled(move |_| pulse.borrow().set_default_sink(&name));
-					menu.add(&button);
+				// 	let name = meters_clone.borrow().sink.get_name().to_owned();
+				// 	let button = gtk::CheckMenuItem::with_label("Default Output Device");
+				// 	button.set_active(name == pulse.default_sink);
+				// 	button.set_sensitive(!button.get_active());
+				// 	let pulse = pulse_clone.clone();
+				// 	button.connect_toggled(move |_| pulse.borrow().set_default_sink(&name));
+				// 	menu.add(&button);
 
-					menu.show_all();
-					menu.popup_easy(0, 0);
-				});
+				// 	menu.show_all();
+				// 	menu.popup_easy(0, 0);
+				// });
 
 				output.pack_start(&meters.borrow_mut().sink_box, false, false, 0);
 				// output.set_border_width(4);
@@ -243,42 +242,42 @@ impl Myxer {
 			{
 				let pulse_clone = pulse.clone();
 				let meters_clone = meters.clone();
-				meters.borrow_mut().source.connect_label_clicked(move |_| {
-					let menu = gtk::Menu::new();
-					let pulse = pulse_clone.borrow();
+				// meters.borrow_mut().source.connect_label_clicked(move |_| {
+				// 	let menu = gtk::Menu::new();
+				// 	let pulse = pulse_clone.borrow();
 
-					let mut last: Option<gtk::RadioMenuItem> = None;
-					for (i, v) in pulse.sources.iter() {
-						let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
-						if let Some(last) = last { button.join_group(Some(&last)) }
-						last = Some(button.clone());
-						menu.add(&button);
+				// 	let mut last: Option<gtk::RadioMenuItem> = None;
+				// 	for (i, v) in pulse.sources.iter() {
+				// 		let button = gtk::RadioMenuItem::with_label(v.data.description.as_str());
+				// 		if let Some(last) = last { button.join_group(Some(&last)) }
+				// 		last = Some(button.clone());
+				// 		menu.add(&button);
 						
-						if let Some(a) = meters_clone.borrow().active_source {
-							if a == *i { button.set_active(true) }
-						}
+				// 		if let Some(a) = meters_clone.borrow().active_source {
+				// 			if a == *i { button.set_active(true) }
+				// 		}
 
-						let i = *i;
-						let meters = meters_clone.clone();
-						button.connect_toggled(move |c| {
-							if !c.get_active() { return }
-							meters.borrow_mut().set_active_source(i);
-						});
-					}
+				// 		let i = *i;
+				// 		let meters = meters_clone.clone();
+				// 		button.connect_toggled(move |c| {
+				// 			if !c.get_active() { return }
+				// 			meters.borrow_mut().set_active_source(i);
+				// 		});
+				// 	}
 
-					menu.add(&gtk::SeparatorMenuItem::new());
+				// 	menu.add(&gtk::SeparatorMenuItem::new());
 
-					let name = meters_clone.borrow().source.get_name().to_owned();
-					let button = gtk::CheckMenuItem::with_label("Default Input Device");
-					button.set_active(name == pulse.default_source);
-					button.set_sensitive(!button.get_active());
-					let pulse = pulse_clone.clone();
-					button.connect_toggled(move |_| pulse.borrow().set_default_source(&name));
-					menu.add(&button);
+				// 	let name = meters_clone.borrow().source.get_name().to_owned();
+				// 	let button = gtk::CheckMenuItem::with_label("Default Input Device");
+				// 	button.set_active(name == pulse.default_source);
+				// 	button.set_sensitive(!button.get_active());
+				// 	let pulse = pulse_clone.clone();
+				// 	button.connect_toggled(move |_| pulse.borrow().set_default_source(&name));
+				// 	menu.add(&button);
 
-					menu.show_all();
-					menu.popup_easy(0, 0);
-				});
+				// 	menu.show_all();
+				// 	menu.popup_easy(0, 0);
+				// });
 
 				input.pack_start(&meters.borrow_mut().source_box, false, false, 0);
 			}
@@ -290,11 +289,6 @@ impl Myxer {
 			input_scroller.get_style_context().add_class("bordered");
 			input.pack_start(&input_scroller, true, true, 0);
 			input_scroller.add(&meters.borrow().source_outputs_box);
-
-			// let mut system_meter = OutputMeter::new();
-			// system_meter.set_name_and_icon("System Sounds", "multimedia-volume-control");
-			// system_meter.set_volume_and_muted(65535, false);
-			// meters.borrow().sink_inputs_box.pack_start(&system_meter.widget, false, false, 0);
 
 			stack.add_titled(&output, "output", "Output");
 			stack.add_titled(&input, "input", "Input");
@@ -363,9 +357,9 @@ impl Myxer {
 
 			if let Some(active_sink) = meters.active_sink {
 				if let Some(sink) = &pulse.sinks.get(&active_sink) {
-					if !meters.sink.is_connected() { meters.sink.set_connection(Some(self.pulse.clone())); }
+					// if !meters.sink.is_connected() { meters.sink.set_connection(Some(self.pulse.clone())); }
 					meters.sink.set_data(&sink.data);
-					meters.sink.set_separate_channels(separate);
+					meters.sink.split_channels(separate);
 					meters.sink.set_peak(if show { Some(sink.peak) } else { None });
 				}
 				else { meters.active_sink = None; }
@@ -374,10 +368,10 @@ impl Myxer {
 			for (index, input) in pulse.sink_inputs.iter() {
 				let sink_inputs_box = meters.sink_inputs_box.clone();
 
-				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| Meter::new(Some(self.pulse.clone())));
+				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));
 				if meter.widget.get_parent().is_none() { sink_inputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&input.data);
-				meter.set_separate_channels(separate);
+				meter.split_channels(separate);
 				meter.set_peak(if show { Some(input.peak) } else { None });
 			}
 
@@ -399,9 +393,9 @@ impl Myxer {
 
 			if let Some(active_source) = meters.active_source {
 				if let Some(source) = &pulse.sources.get(&active_source) {
-					if !meters.source.is_connected() { meters.source.set_connection(Some(self.pulse.clone())); }
+					// if !meters.source.is_connected() { meters.source.set_connection(Some(self.pulse.clone())); }
 					meters.source.set_data(&source.data);
-					meters.source.set_separate_channels(separate);
+					meters.source.split_channels(separate);
 					meters.source.set_peak(if show { Some(source.peak) } else { None });
 				}
 				else { meters.active_source = None; }
@@ -410,10 +404,10 @@ impl Myxer {
 			for (index, output) in pulse.source_outputs.iter() {
 				let source_outputs_box = meters.source_outputs_box.clone();
 				
-				let meter = meters.source_outputs.entry(*index).or_insert_with(|| Meter::new(Some(self.pulse.clone())));
+				let meter = meters.source_outputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));
 				if meter.widget.get_parent().is_none() { source_outputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&output.data);
-				meter.set_separate_channels(separate);
+				meter.split_channels(separate);
 				meter.set_peak(if show { Some(output.peak) } else { None });
 			}
 

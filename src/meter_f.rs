@@ -379,13 +379,13 @@ impl Meter {
 	}
 
 	pub fn connect_label_clicked<F: Fn(&gtk::Button) + 'static>(&mut self, f: F) {
-		self.widget.remove(&self.widgets.label);
-		self.widget.remove(&self.widgets.icon);
+		// self.widget.remove(&self.widgets.label);
+		// self.widget.remove(&self.widgets.icon);
 
-		self.widgets.select.add(&self.widgets.label);
-		self.widgets.select.connect_clicked(f);
+		// self.widgets.select.add(&self.widgets.label);
+		// self.widgets.select.connect_clicked(f);
 
-		self.widget.pack_start(&self.widgets.icon, false, false, 4);
-		self.widget.pack_start(&self.widgets.select, false, false, 0);
+		// self.widget.pack_start(&self.widgets.icon, false, false, 4);
+		// self.widget.pack_start(&self.widgets.select, false, false, 0);
 	}
 }

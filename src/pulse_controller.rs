@@ -14,9 +14,9 @@ use pulse::context::introspect::{ ServerInfo, SourceInfo, SinkInfo, SinkInputInf
 use std::collections::HashMap;
 use std::sync::mpsc::{ channel, Sender, Receiver };
 
-use crate::shared::Shared;
-use crate::card::CardData;
-use crate::meter::MeterData;
+use super::shared::Shared;
+use super::card::CardData;
+use super::meter::MeterData;
 
 
 /** Represents a stream's underlying libpulse type. */
