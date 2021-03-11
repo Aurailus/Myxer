@@ -74,7 +74,10 @@ impl Profiles {
 			let cards_box = cards.cards_box.clone();
 			
 			let card = cards.cards.entry(*index).or_insert_with(|| Card::new(Some(self.pulse.clone())));
-			if card.widget.get_parent().is_none() { cards_box.pack_start(&card.widget, false, false, 0); }
+			if card.widget.get_parent().is_none() {
+				cards_box.pack_start(&card.widget, false, false, 0);
+				cards_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 0);
+			}
 			card.set_data(&data);
 		}
 

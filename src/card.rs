@@ -22,55 +22,8 @@ pub struct CardData {
 struct CardWidgets {
 	root: gtk::Box,
 	
-	// icon: gtk::Image,
 	label: gtk::Label,
 	combo: gtk::ComboBoxText,
-	// select: gtk::Button,
-	// scale_box: gtk::Box,
-	// scales: Vec<gtk::Scale>,
-	// status: gtk::Button,
-	// status_icon: gtk::Image
-}
-
-
-fn build() -> CardWidgets {
-	let root = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	root.set_widget_name("card");
-
-	let inner = gtk::Box::new(gtk::Orientation::Vertical, 0);
-	inner.set_border_width(4);
-	root.pack_start(&inner, true, true, 4);
-
-	let label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-	label_box.set_border_width(0);
-	inner.pack_start(&label_box, false, false, 0);
-
-	let icon = gtk::Image::from_icon_name(Some("audio-card"), gtk::IconSize::LargeToolbar);
-	let label = gtk::Label::new(Some("Unknown Card"));
-
-	label_box.pack_start(&icon, false, false, 4);
-	label_box.pack_start(&label, false, true, 4);
-	
-	let combo = gtk::ComboBoxText::new();
-	inner.pack_start(&combo, false, false, 8);
-
-	// label.set_widget_name("app_label");
-
-	// label.set_size_request(-1, 42);
-	// label.set_justify(gtk::Justification::Center);
-	// label.set_ellipsize(pango::EllipsizeMode::End);
-	// label.set_line_wrap_mode(pango::WrapMode::WordChar);
-	// label.set_max_width_chars(8);
-	// label.set_line_wrap(true);
-	// label.set_lines(2);
-
-
-	CardWidgets {
-		root,
-		// icon,
-		label,
-		combo
-	}
 }
 
 pub struct Card {
@@ -83,8 +36,36 @@ pub struct Card {
 }
 
 impl Card {
+	fn build() -> CardWidgets {
+		let root = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		root.set_widget_name("card");
+
+		let inner = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		inner.set_border_width(3);
+		root.pack_start(&inner, true, true, 3);
+
+		let label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+		label_box.set_border_width(0);
+		inner.pack_start(&label_box, false, false, 3);
+
+		let icon = gtk::Image::from_icon_name(Some("audio-card"), gtk::IconSize::LargeToolbar);
+		let label = gtk::Label::new(Some("Unknown Card"));
+
+		label_box.pack_start(&icon, false, false, 3);
+		label_box.pack_start(&label, false, true, 3);
+		
+		let combo = gtk::ComboBoxText::new();
+		inner.pack_start(&combo, false, false, 6);
+
+		CardWidgets {
+			root,
+			label,
+			combo
+		}
+	}
+
 	pub fn new(pulse: Option<Shared<Pulse>>) -> Self {
-		let widgets = build();
+		let widgets = Card::build();
 		Self {
 			widget: widgets.root.clone(), widgets,
 			data: CardData::default(),

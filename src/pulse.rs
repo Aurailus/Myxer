@@ -74,8 +74,10 @@ pub struct Pulse {
 	context: Shared<Context>,
 	channel: Channel<TxMessage>,
 
-	pub default_sink: String,
-	pub default_source: String,
+	pub default_sink: u32,
+	pub default_source: u32,
+	pub active_sink: u32,
+	pub active_source: u32,
 
 	pub sinks: HashMap<u32, StreamData>,
 	pub sink_inputs: HashMap<u32, StreamData>,
@@ -107,8 +109,10 @@ impl Pulse {
 			mainloop, context,
 			channel: Channel { tx, rx },
 
-			default_sink: "".to_owned(),
-			default_source: "".to_owned(),
+			default_sink: u32::MAX,
+			default_source: u32::MAX,
+			active_sink: u32::MAX,
+			active_source: u32::MAX,
 
 			sinks: HashMap::new(),
 			sink_inputs: HashMap::new(),
@@ -173,24 +177,50 @@ impl Pulse {
 
 
 	/**
-	 * Asynchronously sets the default sink to the name provided.
+	 * Asynchronously sets the default sink to the index provided.
 	 *
-	 * @param {&str} sink - The sink name.
+	 * @param {u32} sink - The sink index.
 	 */
 
-	pub fn set_default_sink(&self, sink: &str) {
-		self.context.borrow_mut().set_default_sink(sink, |_|());
+	pub fn set_default_sink(&self, sink: u32) {
+		if let Some(sink) = self.sinks.get(&sink) {
+			self.context.borrow_mut().set_default_sink(sink.data.name.as_str(), |_|());
+		}
 	}
 
 
 	/**
-	 * Asynchronously sets the default source to the name provided.
+	 * Asynchronously sets the default source to the index provided.
 	 *
-	 * @param {&str} source - The source name.
+	 * @param {u32} source - The source index.
 	 */
 
-	pub fn set_default_source(&self, source: &str) {
-		self.context.borrow_mut().set_default_source(source, |_|());
+	pub fn set_default_source(&self, source: u32) {
+		if let Some(source) = self.sources.get(&source) {
+			self.context.borrow_mut().set_default_source(source.data.name.as_str(), |_|());
+		}
+	}
+
+
+	/**
+	 * Sets the active sink to the index provided.
+	 *
+	 * @param {u32} sink - The sink index.
+	 */
+
+	pub fn set_active_sink(&mut self, sink: u32) {
+		self.active_sink = sink;
+	}
+
+
+	/**
+	 * Sets the default source to the index provided.
+	 *
+	 * @param {u32} source - The source index.
+	 */
+
+	pub fn set_active_source(&mut self, source: u32) {
+		self.active_source = source;
 	}
 
 
@@ -346,8 +376,6 @@ impl Pulse {
 		let introspect = context.introspect();
 
 		let tx = self.channel.tx.clone();
-		introspect.get_server_info(move |res| tx_server(&tx, res));
-		let tx = self.channel.tx.clone();
 		introspect.get_sink_info_list(move |res| tx_sink(&tx, res));
 		let tx = self.channel.tx.clone();
 		introspect.get_sink_input_info_list(move |res| tx_sink_input(&tx, res));
@@ -357,6 +385,8 @@ impl Pulse {
 		introspect.get_source_output_info_list(move |res| tx_source_output(&tx, res));
 		let tx = self.channel.tx.clone();
 		introspect.get_card_info_list(move |res| tx_card(&tx, res));
+		let tx = self.channel.tx.clone();
+		introspect.get_server_info(move |res| tx_server(&tx, res));
 		
 		let tx = self.channel.tx.clone();
 		context.subscribe(InterestMaskSet::SERVER | InterestMaskSet::SINK | InterestMaskSet::SINK_INPUT |
@@ -448,8 +478,21 @@ impl Pulse {
 	 */
 
 	fn update_default(&mut self, sink: String, source: String) {
-		self.default_sink = sink;
-		self.default_source = source;
+		for (i, v) in self.sinks.iter() {
+			if v.data.name == sink {
+				self.default_sink = *i;
+				self.active_sink = *i;
+				break;
+			}
+		}
+
+		for (i, v) in self.sources.iter() {
+			if v.data.name == source {
+				self.default_source = *i;
+				self.active_source = *i;
+				break;
+			}
+		}
 	}
 
 
@@ -494,7 +537,6 @@ impl Pulse {
 	 */
 
 	fn remove_stream(&mut self, t: StreamType, index: u32) {
-		// println!("{:?} {}", t, index);
 		let stream_opt = match t {
 			StreamType::Sink => self.sinks.get_mut(&index),
 			StreamType::SinkInput => self.sink_inputs.get_mut(&index),

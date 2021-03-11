@@ -24,9 +24,6 @@ pub struct Meters {
 	pub source_outputs: HashMap<u32, StreamMeter>,
 	pub source_outputs_box: gtk::Box,
 
-	pub active_sink: Option<u32>,
-	pub active_source: Option<u32>,
-
 	pub show_visualizers: bool,
 	pub separate_channels: bool
 }
@@ -55,7 +52,6 @@ impl Meters {
 			sink, source,
 			sink_box, source_box,
 			sink_inputs_box, source_outputs_box,
-			active_sink: None, active_source: None,
 			sink_inputs: HashMap::new(),
 			source_outputs: HashMap::new(),
 			show_visualizers: true,
@@ -71,16 +67,6 @@ impl Meters {
 	fn toggle_separate_channels(&mut self) -> bool {
 		self.separate_channels = !self.separate_channels;
 		self.separate_channels
-	}
-
-	fn set_active_source(&mut self, ind: u32) {
-		// self.source.set_connection(None);
-		self.active_source = Some(ind);
-	}
-
-	fn set_active_sink(&mut self, ind: u32) {
-		// self.sink.set_connection(None);
-		self.active_sink = Some(ind);
 	}
 }
 
@@ -346,23 +332,10 @@ impl Myxer {
 			let show = meters.show_visualizers;
 			let separate = meters.separate_channels;
 
-			if meters.active_sink.is_none() {
-				for (index, sink) in pulse.sinks.iter() {
-					if sink.data.name == pulse.default_sink {
-						meters.active_sink = Some(*index);
-						break;
-					}
-				}
-			}
-
-			if let Some(active_sink) = meters.active_sink {
-				if let Some(sink) = &pulse.sinks.get(&active_sink) {
-					// if !meters.sink.is_connected() { meters.sink.set_connection(Some(self.pulse.clone())); }
-					meters.sink.set_data(&sink.data);
-					meters.sink.split_channels(separate);
-					meters.sink.set_peak(if show { Some(sink.peak) } else { None });
-				}
-				else { meters.active_sink = None; }
+			if let Some(sink) = pulse.sinks.get(&pulse.active_sink) {
+				meters.sink.set_data(&sink.data);
+				meters.sink.split_channels(separate);
+				meters.sink.set_peak(if show { Some(sink.peak) } else { None });
 			}
 
 			for (index, input) in pulse.sink_inputs.iter() {
@@ -382,23 +355,10 @@ impl Myxer {
 				keep
 			});
 
-			if meters.active_source.is_none() {
-				for (index, source) in pulse.sources.iter() {
-					if source.data.name == pulse.default_source {
-						meters.active_source = Some(*index);
-						break;
-					}
-				}
-			}
-
-			if let Some(active_source) = meters.active_source {
-				if let Some(source) = &pulse.sources.get(&active_source) {
-					// if !meters.source.is_connected() { meters.source.set_connection(Some(self.pulse.clone())); }
-					meters.source.set_data(&source.data);
-					meters.source.split_channels(separate);
-					meters.source.set_peak(if show { Some(source.peak) } else { None });
-				}
-				else { meters.active_source = None; }
+			if let Some(source) = pulse.sources.get(&pulse.active_source) {
+				meters.source.set_data(&source.data);
+				meters.source.split_channels(separate);
+				meters.source.set_peak(if show { Some(source.peak) } else { None });
 			}
 
 			for (index, output) in pulse.source_outputs.iter() {

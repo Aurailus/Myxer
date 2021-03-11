@@ -54,6 +54,9 @@ pub struct MeterWidgets {
 
 // Trait for all meter types.
 pub trait Meter {
+	// Gets the meter's current index
+	fn get_index(&self) -> u32;
+
 	// Sets whether or not to split channels into individual scales.
 	fn split_channels(&mut self, split: bool);
 
@@ -165,7 +168,7 @@ impl dyn Meter {
 		label.set_lines(2);
 
 		label_container.pack_end(&label, false, true, 0);
-		label_container.pack_end(&icon, false, false, 4);
+		label_container.pack_end(&icon, false, false, 3);
 
 		let select = gtk::Button::new();
 		select.set_widget_name("app_select");
@@ -187,7 +190,7 @@ impl dyn Meter {
 		status.get_style_context().add_class("flat");
 		status.get_style_context().add_class("muted");
 
-		root.pack_end(&status_box, false, false, 4);
+		root.pack_end(&status_box, false, false, 3);
 		root.pack_end(&scales_outer, true, true, 2);
 		root.pack_start(&app_button, false, false, 0);
 

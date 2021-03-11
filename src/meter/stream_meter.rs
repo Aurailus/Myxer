@@ -65,6 +65,10 @@ impl StreamMeter {
 }
 
 impl Meter for StreamMeter {
+	fn get_index(&self) -> u32 {
+		self.data.index
+	}
+	
 	fn split_channels(&mut self, split: bool) {
 		if self.split == split { return }
 		self.split = split;

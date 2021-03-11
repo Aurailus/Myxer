@@ -32,20 +32,6 @@ headerbar box:last-child separator {
 	border-image-source: none;
 }
 
-/* Fix double border on tab layout */
-notebook {
-	border-width: 0;
-	border-top-width: 1px;
-}
-
-/* Apply a border to select elements. */
-
-.bordered {
-	/*border: 1px solid @border_color;*/
-	/*padding: 4px;*/
-	/*border-right: 1px solid @border_color;*/
-}
-
 scrollbar {
 	border-color: @border_color;
 }
@@ -69,7 +55,6 @@ the hardcoded values with theme colors. */
 }
 
 #meter #top {
-	/*padding: 0 1px;*/
 	padding: 0;
 	margin: 2px;
 }
@@ -123,9 +108,10 @@ undershoot {
 /** Card border */
 
 #card {
-	border-bottom: 1px solid alpha(@border_color, 0.5);
+	margin-top: -3px;
+	margin-bottom: -6px;
 }
 
 #card:first-child {
-	margin-top: 4px;
+	margin-top: 6px;
 }

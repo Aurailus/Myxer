@@ -58,12 +58,12 @@ impl SourceMeter {
 		}));
 
 		let pulse = self.pulse.clone();
-		let name 	= self.data.name.clone();
+		let index = self.data.index;
 
 		if self.l_id.is_some() { self.widgets.app_button.disconnect(
 			glib::signal::SignalHandlerId::from_glib(self.l_id.as_ref().unwrap().to_glib())) }
 		self.l_id = Some(self.widgets.app_button.connect_clicked(move |trigger| {
-			SourceMeter::show_popup(&trigger, &pulse, &name);
+			SourceMeter::show_popup(&trigger, &pulse, index);
 		}));
 	}
 
@@ -77,7 +77,7 @@ impl SourceMeter {
 		}
 	}
 
-	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<Pulse>, name: &str) {
+	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<Pulse>, index: u32) {
 		let pulse = pulse_shr.borrow_mut();
 		let root = gtk::PopoverMenu::new();
 		root.set_border_width(6);
@@ -94,13 +94,12 @@ impl SourceMeter {
 		let set_default = gtk::ModelButton::new();
 		set_default.set_property_role(gtk::ButtonRole::Check);
 		set_default.set_property_text(Some("Set as Default"));
-		set_default.set_property_active(pulse.default_source == name);
-		set_default.set_sensitive(pulse.default_source != name);
+		set_default.set_property_active(pulse.default_source == index);
+		set_default.set_sensitive(pulse.default_source != index);
 			
-		let name_clone = name.to_owned();
 		let pulse_clone = pulse_shr.clone();
 		set_default.connect_clicked(move |set_default| {
-			pulse_clone.borrow_mut().set_default_source(name_clone.as_str());
+			pulse_clone.borrow_mut().set_default_source(index);
 			set_default.set_property_active(true);
 			set_default.set_sensitive(false);
 		});
@@ -113,18 +112,22 @@ impl SourceMeter {
 			label.set_sensitive(false);
 			menu.pack_start(&label, true, true, 3);
 			
-			for (_, v) in pulse.sources.iter() {
+			for (i, v) in pulse.sources.iter() {
 				let button = gtk::ModelButton::new();
 				button.set_property_role(gtk::ButtonRole::Radio);
-				button.set_property_active(v.data.name == name);
+				button.set_property_active(v.data.index == index);
 				let button_label = gtk::Label::new(Some(v.data.description.as_str()));
 				button_label.set_ellipsize(pango::EllipsizeMode::End);
 				button_label.set_max_width_chars(18);
 				button.get_child().unwrap().downcast::<gtk::Box>().unwrap().add(&button_label);
 
-				// button.connect_clicked(move |_| {
-				// 	println!("{}", i);
-				// });
+				let i = *i;
+				let root = root.clone();
+				let pulse_clone = pulse_shr.clone();
+				button.connect_clicked(move |_| {
+					pulse_clone.borrow_mut().set_active_source(i);
+					root.popdown();
+				});
 				
 				menu.add(&button);
 			}
@@ -137,6 +140,10 @@ impl SourceMeter {
 }
 
 impl Meter for SourceMeter {
+	fn get_index(&self) -> u32 {
+		self.data.index
+	}
+	
 	fn split_channels(&mut self, split: bool) {
 		if self.split == split { return }
 		self.split = split;
