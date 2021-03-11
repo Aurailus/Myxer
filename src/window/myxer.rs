@@ -13,7 +13,7 @@ struct Container {
 	profiles: Option<Profiles>
 }
 
-struct Meters {
+pub struct Meters {
 	pub sink: SinkMeter,
 	pub sink_box: gtk::Box,
 	pub sink_inputs: HashMap<u32, StreamMeter>,
@@ -141,7 +141,7 @@ impl Myxer {
 			let prefs = gtk::PopoverMenu::new();
 			prefs.set_pointing_to(&gtk::Rectangle { x: 12, y: 32, width: 2, height: 2 });
 			prefs.set_relative_to(Some(&prefs_button));
-			prefs.set_border_width(8);
+			prefs.set_border_width(6);
 
 			let prefs_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 			prefs.add(&prefs_box);
@@ -187,8 +187,8 @@ impl Myxer {
 		{
 			let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 			{
-				let pulse_clone = pulse.clone();
-				let meters_clone = meters.clone();
+				// let pulse_clone = pulse.clone();
+				// let meters_clone = meters.clone();
 				// meters.borrow_mut().sink.connect_label_clicked(move |_| {
 				// 	let menu = gtk::Menu::new();
 				// 	let pulse = pulse_clone.borrow();
@@ -240,8 +240,8 @@ impl Myxer {
 
 			let input = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 			{
-				let pulse_clone = pulse.clone();
-				let meters_clone = meters.clone();
+				// let pulse_clone = pulse.clone();
+				// let meters_clone = meters.clone();
 				// meters.borrow_mut().source.connect_label_clicked(move |_| {
 				// 	let menu = gtk::Menu::new();
 				// 	let pulse = pulse_clone.borrow();

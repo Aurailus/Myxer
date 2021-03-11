@@ -105,7 +105,6 @@ impl Card {
 		let index = self.data.index;
 		let pulse = self.pulse.as_ref().unwrap().clone();
 		self.combo_connect_id = Some(self.widgets.combo.connect_changed(move |combo| {
-			println!("Done~");
 			let val = combo.get_active_id().unwrap().as_str().to_owned();
 			pulse.borrow_mut().set_card_profile(index, val.as_str());
 		}));

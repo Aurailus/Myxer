@@ -4,39 +4,43 @@ use glib::translate::{ ToGlib, FromGlib };
 
 use crate::shared::Shared;
 use crate::pulse_controller::PulseController;
+use super::meter::{ Meter, MeterWidgets, MeterData };
 use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS };
-use super::meter::{ Meter, MeterWidgets, MeterData, build_scales, build_meter };
 
-// A meter for a sink.
+// A meter for a source.
 pub struct SourceMeter {
 	pub widget: gtk::Box,
 
 	data: MeterData,
 	widgets: MeterWidgets,
+	// meters: Shared<Meters>,
 	pulse: Shared<PulseController>,
 
 	split: bool,
 	peak: Option<u32>,
 
-	b_id: Option<glib::signal::SignalHandlerId>,
+	l_id: Option<glib::signal::SignalHandlerId>,
+	s_id: Option<glib::signal::SignalHandlerId>,
 }
 
 impl SourceMeter {
 	pub fn new(pulse: Shared<PulseController>) -> Self {
-		let widgets = build_meter();
+		let widgets = Meter::build_meter();
+
 		Self {
 			widget: widgets.root.clone(),
 			
 			pulse,
+			// meters,
 			widgets,
 			data: MeterData::default(),
 
-			split: false, peak: None, b_id: None
+			split: false, peak: None, l_id: None, s_id: None
 		}
 	}
 
 	fn rebuild_widgets(&mut self) {
-		let scales = build_scales(&self.pulse, &self.data, self.split);
+		let scales = Meter::build_scales(&self.pulse, &self.data, self.split);
 		self.widgets.scales_outer.remove(&self.widgets.scales_inner);
 		self.widgets.scales_outer.pack_start(&scales, true, false, 0);
 		self.widgets.scales_inner = scales;
@@ -46,10 +50,20 @@ impl SourceMeter {
 		let index = self.data.index;
 		let pulse = self.pulse.clone();
 
-		if self.b_id.is_some() { self.widgets.status.disconnect(glib::signal::SignalHandlerId::from_glib(self.b_id.as_ref().unwrap().to_glib())) }
-		self.b_id = Some(self.widgets.status.connect_clicked(move |status| {
+		if self.s_id.is_some() { self.widgets.status.disconnect(
+			glib::signal::SignalHandlerId::from_glib(self.s_id.as_ref().unwrap().to_glib())) }
+		self.s_id = Some(self.widgets.status.connect_clicked(move |status| {
 			pulse.borrow_mut().set_muted(t, index,
 				!status.get_style_context().has_class("muted"));
+		}));
+
+		let pulse = self.pulse.clone();
+		let name 	= self.data.name.clone();
+
+		if self.l_id.is_some() { self.widgets.app_button.disconnect(
+			glib::signal::SignalHandlerId::from_glib(self.l_id.as_ref().unwrap().to_glib())) }
+		self.l_id = Some(self.widgets.app_button.connect_clicked(move |trigger| {
+			SourceMeter::show_popup(&trigger, &pulse, &name);
 		}));
 	}
 
@@ -61,6 +75,63 @@ impl SourceMeter {
 				scale.set_value(v.0 as f64);
 			}
 		}
+	}
+
+	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<PulseController>, name: &str) {
+		let pulse = pulse_shr.borrow_mut();
+		let root = gtk::PopoverMenu::new();
+		root.set_border_width(6);
+
+		let menu = gtk::Box::new(gtk::Orientation::Vertical, 0);
+		root.add(&menu);
+		
+		let split_channels = gtk::ModelButton::new();
+		split_channels.set_property_text(Some("Split Channels"));
+		split_channels.set_action_name(Some("app.split_channels"));
+		menu.add(&split_channels);
+
+		let set_default = gtk::ModelButton::new();
+		set_default.set_property_role(gtk::ButtonRole::Check);
+		set_default.set_property_text(Some("Default Input"));
+		set_default.set_property_active(pulse.default_source == name);
+		set_default.set_sensitive(pulse.default_source != name);
+			
+		let name_clone = name.to_owned();
+		let pulse_clone = pulse_shr.clone();
+		set_default.connect_clicked(move |set_default| {
+			pulse_clone.borrow_mut().set_default_source(name_clone.as_str());
+			set_default.set_property_active(true);
+			set_default.set_sensitive(false);
+		});
+		menu.add(&set_default);
+
+		if pulse.sources.len() >= 2 {
+			menu.pack_start(&gtk::SeparatorMenuItem::new(), false, false, 3);
+
+			let label = gtk::Label::new(Some("Visible Input"));
+			label.set_sensitive(false);
+			menu.pack_start(&label, true, true, 3);
+			
+			for (_, v) in pulse.sources.iter() {
+				let button = gtk::ModelButton::new();
+				button.set_property_role(gtk::ButtonRole::Radio);
+				button.set_property_active(v.data.name == name);
+				let button_label = gtk::Label::new(Some(v.data.description.as_str()));
+				button_label.set_ellipsize(pango::EllipsizeMode::End);
+				button_label.set_max_width_chars(18);
+				button.get_child().unwrap().downcast::<gtk::Box>().unwrap().add(&button_label);
+
+				// button.connect_clicked(move |_| {
+				// 	println!("{}", i);
+				// });
+				
+				menu.add(&button);
+			}
+		}
+
+		root.get_children().iter().for_each(|i| i.show_all());
+		root.set_relative_to(Some(trigger));
+		root.popup();
 	}
 }
 
@@ -89,6 +160,7 @@ impl Meter for SourceMeter {
 
 		if data.name != self.data.name {
 			self.data.name = data.name.clone();
+			self.rebuild_widgets();
 		}
 
 		if data.description != self.data.description {
