@@ -255,7 +255,7 @@ impl Myxer {
 				meters.sink.set_peak(if show { Some(sink.peak) } else { None });
 			}
 
-			for (index, input) in pulse.sink_inputs.iter() {
+			for (index, input) in &pulse.sink_inputs {
 				let sink_inputs_box = meters.sink_inputs_box.clone();
 
 				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));
@@ -278,7 +278,7 @@ impl Myxer {
 				meters.source.set_peak(if show { Some(source.peak) } else { None });
 			}
 
-			for (index, output) in pulse.source_outputs.iter() {
+			for (index, output) in &pulse.source_outputs {
 				let source_outputs_box = meters.source_outputs_box.clone();
 				
 				let meter = meters.source_outputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));

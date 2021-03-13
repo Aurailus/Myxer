@@ -108,11 +108,11 @@ impl SinkMeter {
 			label.set_sensitive(false);
 			menu.pack_start(&label, true, true, 3);
 			
-			for (i, v) in pulse.sinks.iter() {
+			for (i, v) in &pulse.sinks {
 				let button = gtk::ModelButton::new();
 				button.set_property_role(gtk::ButtonRole::Radio);
 				button.set_property_active(v.data.index == index);
-				let button_label = gtk::Label::new(Some(v.data.description.as_str()));
+				let button_label = gtk::Label::new(Some(&v.data.description));
 				button_label.set_ellipsize(pango::EllipsizeMode::End);
 				button_label.set_max_width_chars(18);
 				button.get_child().unwrap().downcast::<gtk::Box>().unwrap().add(&button_label);
@@ -129,7 +129,7 @@ impl SinkMeter {
 			}
 		}
 
-		root.get_children().iter().for_each(|i| i.show_all());
+		for child in &root.get_children() { child.show_all(); }
 		root.set_relative_to(Some(trigger));
 		root.popup();
 	}
@@ -159,7 +159,7 @@ impl Meter for SinkMeter {
 
 		if data.icon != self.data.icon {
 			self.data.icon = data.icon.clone();
-			self.widgets.icon.set_from_icon_name(Some(&self.data.icon.as_str()), gtk::IconSize::Dnd);
+			self.widgets.icon.set_from_icon_name(Some(&self.data.icon), gtk::IconSize::Dnd);
 		}
 
 		if data.name != self.data.name {
@@ -169,7 +169,7 @@ impl Meter for SinkMeter {
 
 		if data.description != self.data.description {
 			self.data.description = data.description.clone();
-			self.widgets.label.set_label(self.data.description.as_str());
+			self.widgets.label.set_label(&self.data.description);
 		}
 
 		if volume_changed || data.muted != self.data.muted {
@@ -188,7 +188,7 @@ impl Meter for SinkMeter {
 
 			let mut string = vol_scaled.to_string();
 			string.push_str("%");
-			self.widgets.status.set_label(string.as_str());
+			self.widgets.status.set_label(&string);
 
 			let status_ctx = self.widgets.status.get_style_context();
 			if self.data.muted { status_ctx.add_class("muted") }
@@ -210,7 +210,7 @@ impl Meter for SinkMeter {
 				}
 			}
 			else {
-				for s in self.widgets.scales_inner.get_children().iter() {
+				for s in &self.widgets.scales_inner.get_children() {
 					let s = s.clone().downcast::<gtk::Scale>().expect("Scales box has non-scale children.");
 					s.set_show_fill_level(false);
 					s.get_style_context().remove_class("visualizer");

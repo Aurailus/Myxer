@@ -11,7 +11,7 @@ pub fn style(window: &gtk::ApplicationWindow) {
 		s.push_str("@define-color ");
 		s.push_str(identifier);
 		s.push_str(" ");
-		s.push_str(colorsys::Rgb::new(color.red * 255.0, color.green * 255.0, color.blue * 255.0, None).to_css_string().as_str());
+		s.push_str(&colorsys::Rgb::new(color.red * 255.0, color.green * 255.0, color.blue * 255.0, None).to_css_string());
 		s.push_str(";\n");
 	};
 

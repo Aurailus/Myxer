@@ -70,7 +70,7 @@ impl Profiles {
 
 		let pulse = self.pulse.borrow_mut();
 		let mut cards = self.cards.borrow_mut();
-		for (index, data) in pulse.cards.iter() {
+		for (index, data) in &pulse.cards {
 			let cards_box = cards.cards_box.clone();
 			
 			let card = cards.cards.entry(*index).or_insert_with(|| Card::new(Some(self.pulse.clone())));

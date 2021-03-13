@@ -86,8 +86,7 @@ impl Card {
 		let index = self.data.index;
 		let pulse = self.pulse.as_ref().unwrap().clone();
 		self.combo_connect_id = Some(self.widgets.combo.connect_changed(move |combo| {
-			let val = combo.get_active_id().unwrap().as_str().to_owned();
-			pulse.borrow_mut().set_card_profile(index, val.as_str());
+			pulse.borrow_mut().set_card_profile(index, &String::from(combo.get_active_id().unwrap()));
 		}));
 	}
 
@@ -100,23 +99,21 @@ impl Card {
 
 		if data.name != self.data.name {
 			self.data.name = data.name.clone();
-			self.widgets.label.set_label(self.data.name.as_str());
+			self.widgets.label.set_label(&self.data.name);
 		}
 
 		if data.profiles.len() != self.data.profiles.len() {
 			self.disconnect();
 			self.data.profiles = data.profiles.clone();
 			self.widgets.combo.remove_all();
-			for (i, n) in data.profiles.iter() {
-				self.widgets.combo.append(Some(i.as_str()), n.as_str());
-			}
+			for (i, n) in &data.profiles { self.widgets.combo.append(Some(&i), &n); }
 			self.connect();
 		}
 
 		if data.active_profile != self.data.active_profile {
 			self.disconnect();
 			self.data.active_profile = data.active_profile.clone();
-			self.widgets.combo.set_active_id(Some(self.data.active_profile.as_str()));
+			self.widgets.combo.set_active_id(Some(&self.data.active_profile));
 			self.connect();
 		}
 	}

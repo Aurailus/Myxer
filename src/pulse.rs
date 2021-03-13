@@ -184,7 +184,10 @@ impl Pulse {
 
 	pub fn set_default_sink(&self, sink: u32) {
 		if let Some(sink) = self.sinks.get(&sink) {
-			self.context.borrow_mut().set_default_sink(sink.data.name.as_str(), |_|());
+			let mut mainloop = self.mainloop.borrow_mut();
+			mainloop.lock();
+			self.context.borrow_mut().set_default_sink(&sink.data.name, |_|());
+			mainloop.unlock();
 		}
 	}
 
@@ -197,7 +200,10 @@ impl Pulse {
 
 	pub fn set_default_source(&self, source: u32) {
 		if let Some(source) = self.sources.get(&source) {
-			self.context.borrow_mut().set_default_source(source.data.name.as_str(), |_|());
+			let mut mainloop = self.mainloop.borrow_mut();
+			mainloop.lock();
+			self.context.borrow_mut().set_default_source(&source.data.name, |_|());
+			mainloop.unlock();
 		}
 	}
 
@@ -234,13 +240,17 @@ impl Pulse {
 
 	pub fn set_volume(&self, t: StreamType, index: u32, volumes: ChannelVolumes) {
 		let mut introspect = self.context.borrow().introspect();
-		
+		let mut mainloop = self.mainloop.borrow_mut();
+		mainloop.lock();
+
 		match t {
 			StreamType::Sink => drop(introspect.set_sink_volume_by_index(index, &volumes, None)),
 			StreamType::SinkInput => drop(introspect.set_sink_input_volume(index, &volumes, None)),
 			StreamType::Source => drop(introspect.set_source_volume_by_index(index, &volumes, None)),
 			StreamType::SourceOutput => drop(introspect.set_source_output_volume(index, &volumes, None))
 		};
+
+		mainloop.unlock();
 	}
 
 
@@ -254,12 +264,17 @@ impl Pulse {
 
 	pub fn set_muted(&self, t: StreamType, index: u32, muted: bool) {
 		let mut introspect = self.context.borrow().introspect();
+		let mut mainloop = self.mainloop.borrow_mut();
+		mainloop.lock();
+
 		match t {
 			StreamType::Sink => drop(introspect.set_sink_mute_by_index(index, muted, None)),
 			StreamType::SinkInput => drop(introspect.set_sink_input_mute(index, muted, None)),
 			StreamType::Source => drop(introspect.set_source_mute_by_index(index, muted, None)),
 			StreamType::SourceOutput => drop(introspect.set_source_output_mute(index, muted, None))
 		};
+
+		mainloop.unlock();
 	}
 
 
@@ -272,7 +287,10 @@ impl Pulse {
 	 
 	pub fn set_card_profile(&self, index: u32, profile: &str) {
 		let mut introspect = self.context.borrow().introspect();
+		let mut mainloop = self.mainloop.borrow_mut();
+		mainloop.lock();
 		introspect.set_card_profile_by_index(index, profile, None);
+		mainloop.unlock();
 	}
 
 
@@ -372,6 +390,8 @@ impl Pulse {
 			}
 		}
 
+		let mut mainloop = self.mainloop.borrow_mut();
+		mainloop.lock();
 		let mut context = self.context.borrow_mut();
 		let introspect = context.introspect();
 
@@ -421,6 +441,8 @@ impl Pulse {
 				_ => ()
 			};
 		})));
+
+		mainloop.unlock();
 	}
 
 
@@ -478,7 +500,7 @@ impl Pulse {
 	 */
 
 	fn update_default(&mut self, sink: String, source: String) {
-		for (i, v) in self.sinks.iter() {
+		for (i, v) in &self.sinks {
 			if v.data.name == sink {
 				self.default_sink = *i;
 				self.active_sink = *i;
@@ -486,7 +508,7 @@ impl Pulse {
 			}
 		}
 
-		for (i, v) in self.sources.iter() {
+		for (i, v) in &self.sources {
 			if v.data.name == source {
 				self.default_source = *i;
 				self.active_source = *i;
@@ -517,7 +539,7 @@ impl Pulse {
 		if let Some(stream) = entry { stream.data = data; }
 		else {
 			let source_str = stream.monitor_index.to_string();
-			let monitor = self.create_monitor_stream(t, if t == StreamType::SinkInput { None } else { Some(source_str.as_str()) }, index);
+			let monitor = self.create_monitor_stream(t, if t == StreamType::SinkInput { None } else { Some(&source_str) }, index);
 			let data = StreamData { data, peak: 0, monitor, monitor_index: stream.monitor_index };
 			match t {
 				StreamType::Sink => self.sinks.insert(index, data),
@@ -546,10 +568,13 @@ impl Pulse {
 
 		if let Some(stream) = stream_opt {
 			let mut monitor = stream.monitor.borrow_mut();
+			let mut mainloop = self.mainloop.borrow_mut();
+			mainloop.lock();
 			if monitor.get_state().is_good() {
 				monitor.set_read_callback(None);
 				let _ = monitor.disconnect();
 			}
+			mainloop.unlock();
 		}
 
 		match t {
@@ -620,8 +645,11 @@ impl Pulse {
 				stream.set_monitor_stream(stream_index).unwrap();
 			}
 
+			let mut mainloop = self.mainloop.borrow_mut();
+			mainloop.lock();
 			stream.connect_record(source, Some(&attr),
 				StreamFlagSet::DONT_MOVE | StreamFlagSet::ADJUST_LATENCY | StreamFlagSet::PEAK_DETECT).unwrap();
+			mainloop.unlock();
 
 			let t = t.clone();
 			let sc = s.clone();
