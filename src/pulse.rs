@@ -360,7 +360,7 @@ impl Pulse {
 
 		fn tx_source_output(tx: &Sender<TxMessage>, result: ListResult<&SourceOutputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
-				let app_id = item.proplist.get_str("application.process.binary").unwrap_or("".to_owned());
+				let app_id = item.proplist.get_str("application.process.binary").unwrap_or("".to_owned()).to_lowercase();
 				if app_id.contains("pavucontrol") || app_id.contains("myxer") { return; }
 				tx.send(TxMessage::StreamUpdate(StreamType::SourceOutput, TxStreamData {
 					data: MeterData {
