@@ -1,5 +1,3 @@
-@define-color border_color darker(@background_color);
-
 .title {
 	padding-left: 3px;
 }
@@ -26,14 +24,10 @@ headerbar #preferences image {
 	-gtk-icon-transform: scale(0.75);
 }
 
-
 headerbar box:last-child separator {
 	border-width: 0;
 	border-image-source: none;
 }
-
-/* At some point, figure out how to replace
-the hardcoded values with theme colors. */
 
 #meter scale.visualizer trough highlight {
 	background: none;
@@ -55,14 +49,6 @@ the hardcoded values with theme colors. */
 	margin: 2px;
 }
 
-/* Pad the system volume since it's not got a scrollbar.
-Value should be dynamically determined later. */
-
-#meter.outer {
-	/*padding-bottom: 13px;*/
-	/*margin-right: 4px;*/
-}
-
 #meter #app_label {
 	padding: 0 3px;
 }
@@ -76,8 +62,6 @@ Value should be dynamically determined later. */
 	padding: 0;
 }
 
-/* Styles for the Mute indicator button. */
-
 #meter #mute_toggle image {
 	margin-top: 1px;
 }
@@ -87,21 +71,16 @@ Value should be dynamically determined later. */
 }
 
 #meter #mute_toggle.muted {
-	border-color: @border_color;
+	border-color: darker(@background_color);
 }
 
 #meter #mute_toggle.muted {
 	color: alpha(@foreground_color, 0.4);
 }
 
-/* Hide the weird dotted lines on the
-sides of the scroll container. */
-
 undershoot {
 	background: none;
 }
-
-/** Card border */
 
 #card {
 	margin-top: -3px;
