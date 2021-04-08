@@ -415,7 +415,10 @@ impl Pulse {
 			if let ListResult::Item(item) = result {
 				tx.send(TxMessage::CardUpdate(CardData {
 					index: item.index,
-					name: item.proplist.get_str("device.description").unwrap_or("".to_owned()),
+					name: item.proplist.get_str("device.description")
+							.or_else(|| item.proplist.get_str("device.alias"))
+							.or_else(|| item.proplist.get_str("device.name"))
+							.unwrap_or_else(|| "".to_owned()),
 					icon: item.proplist.get_str("device.icon_name").unwrap_or_else(|| "audio-card-pci".to_owned()),
 					profiles: item.profiles.iter().map(|p| (p.name.as_ref().unwrap().clone().into_owned(),
 						p.description.as_ref().unwrap().clone().into_owned())).collect(),
