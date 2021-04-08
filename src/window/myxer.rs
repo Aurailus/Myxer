@@ -134,6 +134,7 @@ impl Myxer {
 			};
 
 			window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
+                        window.get_style_context().add_class("Myxer");
 			style::style(&window);
 
 			let stack_switcher = gtk::StackSwitcher::new();
