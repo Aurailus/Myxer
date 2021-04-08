@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=Myxer
+GenericName=Volume Mixer
+Comment=Adjust application and device volumes.
+Exec=myxer
+Icon=multimedia-volume-control
+Terminal=false
+StartupNotify=true
+Categories=AudioVideo;Audio;Mixer;GTK;
+Keywords=volume;control;audio

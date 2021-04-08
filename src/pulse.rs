@@ -269,10 +269,10 @@ impl Pulse {
 		mainloop.lock();
 
 		match t {
-			StreamType::Sink => drop(introspect.set_sink_volume_by_index(index, &volumes, None)),
-			StreamType::SinkInput => drop(introspect.set_sink_input_volume(index, &volumes, None)),
-			StreamType::Source => drop(introspect.set_source_volume_by_index(index, &volumes, None)),
-			StreamType::SourceOutput => drop(introspect.set_source_output_volume(index, &volumes, None))
+			StreamType::Sink => { introspect.set_sink_volume_by_index(index, &volumes, None); },
+			StreamType::SinkInput => { introspect.set_sink_input_volume(index, &volumes, None); },
+			StreamType::Source => { introspect.set_source_volume_by_index(index, &volumes, None); },
+			StreamType::SourceOutput => { introspect.set_source_output_volume(index, &volumes, None); }
 		};
 
 		mainloop.unlock();
@@ -294,10 +294,10 @@ impl Pulse {
 		mainloop.lock();
 
 		match t {
-			StreamType::Sink => drop(introspect.set_sink_mute_by_index(index, mute, None)),
-			StreamType::SinkInput => drop(introspect.set_sink_input_mute(index, mute, None)),
-			StreamType::Source => drop(introspect.set_source_mute_by_index(index, mute, None)),
-			StreamType::SourceOutput => drop(introspect.set_source_output_mute(index, mute, None))
+			StreamType::Sink => { introspect.set_sink_mute_by_index(index, mute, None) },
+			StreamType::SinkInput => { introspect.set_sink_input_mute(index, mute, None) },
+			StreamType::Source => { introspect.set_source_mute_by_index(index, mute, None) },
+			StreamType::SourceOutput => { introspect.set_source_output_mute(index, mute, None) }
 		};
 
 		mainloop.unlock();
@@ -454,26 +454,26 @@ impl Pulse {
 			let operation = op.unwrap();
 
 			match facility {
-				Facility::Server => drop(introspect.get_server_info(move |res| tx_server(&tx, res))),
+				Facility::Server => { introspect.get_server_info(move |res| tx_server(&tx, res)); },
 				Facility::Sink => match operation {
 					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::Sink, index)).unwrap(),
-					_ => drop(introspect.get_sink_info_by_index(index, move |res| tx_sink(&tx, res)))
+					_ => { introspect.get_sink_info_by_index(index, move |res| tx_sink(&tx, res)); }
 				},
 				Facility::SinkInput => match operation {
 					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::SinkInput, index)).unwrap(),
-					_ => drop(introspect.get_sink_input_info(index, move |res| tx_sink_input(&tx, res)))
+					_ => { introspect.get_sink_input_info(index, move |res| tx_sink_input(&tx, res)); }
 				},
 				Facility::Source => match operation {
 					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::Source, index)).unwrap(),
-					_ => drop(introspect.get_source_info_by_index(index, move |res| tx_source(&tx, res)))
+					_ => { introspect.get_source_info_by_index(index, move |res| tx_source(&tx, res)); }
 				},
 				Facility::SourceOutput => match operation {
 					Operation::Removed => tx.send(TxMessage::StreamRemove(StreamType::SourceOutput, index)).unwrap(),
-					_ => drop(introspect.get_source_output_info(index, move |res| tx_source_output(&tx, res)))
+					_ => { introspect.get_source_output_info(index, move |res| tx_source_output(&tx, res)); }
 				},
 				Facility::Card => match operation {
 					Operation::Removed => tx.send(TxMessage::CardRemove(index)).unwrap(),
-					_ => drop(introspect.get_card_info_by_index(index, move |res| tx_card(&tx, res)))
+					_ => { introspect.get_card_info_by_index(index, move |res| tx_card(&tx, res)); }
 				},
 				_ => ()
 			};

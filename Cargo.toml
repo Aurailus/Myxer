@@ -13,7 +13,12 @@ edition = "2018"
 name = "Myxer"
 section = "sound"
 copyright = "(c) Auri Collings, 2021"
-extended-description-file = "package.txt"
+extended-description-file = "DEBIAN.txt"
+assets = [
+	["target/release/myxer", "usr/bin/", "755"],
+  ["README.md", "usr/share/doc/Myxer/README", "644"],
+	["Myxer.desktop", "/usr/share/applications/", "644"]
+]
 
 [dependencies]
 gdk = "0.13.2"
