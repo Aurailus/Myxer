@@ -208,10 +208,10 @@ impl Meter for SinkMeter {
 			self.data.muted = data.muted;
 			self.update_widgets();
 
-			let status_vol = self.data.volume.max().0;
+			let status_vol = if self.data.muted { 0 } else { self.data.volume.max().0 };
 
 			self.widgets.status_icon.set_from_icon_name(Some(OUTPUT_ICONS[
-				if self.data.muted { 0 } else if status_vol >= MAX_NATURAL_VOL { 3 }
+				if status_vol == 0 { 0 } else if status_vol >= MAX_NATURAL_VOL { 3 }
 				else if status_vol >= MAX_NATURAL_VOL / 2 { 2 } else { 1 }]), gtk::IconSize::Button);
 
 			let mut vol_scaled = ((status_vol as f64) / MAX_NATURAL_VOL as f64 * 100.0).round() as u8;
@@ -219,11 +219,11 @@ impl Meter for SinkMeter {
 
 			let mut string = vol_scaled.to_string();
 			string.push('%');
+
 			self.widgets.status.set_label(&string);
 
-			let status_ctx = self.widgets.status.get_style_context();
-			if self.data.muted { status_ctx.add_class("muted") }
-			else { status_ctx.remove_class("muted") }
+			if status_vol == 0 {self.widgets.status.get_style_context().add_class("muted") }
+			else { self.widgets.status.get_style_context().remove_class("muted") }
 		}
 	}
 

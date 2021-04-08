@@ -7,10 +7,10 @@ use slice_as_array::{ slice_as_array, slice_as_array_transmute };
 
 use libpulse::def::BufferAttr;
 use libpulse::callbacks::ListResult;
-use libpulse::volume::ChannelVolumes;
 use libpulse::sample::{ Spec, Format };
 use libpulse::mainloop::threaded::Mainloop;
 use libpulse::proplist::{ Proplist, properties };
+use libpulse::volume::{ Volume, ChannelVolumes };
 use libpulse::stream::{ Stream, FlagSet as StreamFlagSet, PeekResult };
 use libpulse::context::subscribe::{ InterestMaskSet, Facility, Operation };
 use libpulse::context::{ Context, FlagSet as CtxFlagSet, State as ContextState };
@@ -22,6 +22,7 @@ use std::sync::mpsc::{ channel, Sender, Receiver };
 use super::shared::Shared;
 use super::card::CardData;
 use super::meter::MeterData;
+use super::meter::MAX_NATURAL_VOL;
 
 
 /**
@@ -289,6 +290,25 @@ impl Pulse {
 	 */
 
 	pub fn set_muted(&self, t: StreamType, index: u32, mute: bool) {
+		// If unmuting a stream that has been set to 0 volume, it should be reset to full.
+		if !mute {
+			let entry = match t {
+				StreamType::Sink => self.sinks.get(&index),
+				StreamType::SinkInput => self.sink_inputs.get(&index),
+				StreamType::Source => self.sources.get(&index),
+				StreamType::SourceOutput => self.source_outputs.get(&index),
+			};
+
+			if let Some(entry) = entry {
+				if entry.data.volume.max().0 == 0 {
+					let mut volumes = ChannelVolumes::default();
+					volumes.set_len(entry.data.volume.len());
+					volumes.set(entry.data.volume.len(), Volume(MAX_NATURAL_VOL));
+					self.set_volume(t, index, volumes);
+				}
+			}
+		};
+
 		let mut introspect = self.context.borrow().introspect();
 		let mut mainloop = self.mainloop.borrow_mut();
 		mainloop.lock();

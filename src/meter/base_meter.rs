@@ -163,7 +163,9 @@ impl dyn Meter {
 
 					volumes.set_len(children.len() as u8);
 
-					pulse.borrow_mut().set_volume(t, index, volumes);
+					let pulse = pulse.borrow_mut();
+					pulse.set_volume(t, index, volumes);
+					if volumes.max().0 > 0 { pulse.set_muted(t, index, false); }
 					gtk::Inhibit(false)
 				});
 
@@ -178,7 +180,9 @@ impl dyn Meter {
 				let mut volumes = ChannelVolumes::default();
 				volumes.set_len(channels);
 				volumes.set(channels, Volume(value as u32));
-				pulse.borrow_mut().set_volume(t, index, volumes);
+				let pulse = pulse.borrow_mut();
+				pulse.set_volume(t, index, volumes);
+				if volumes.max().0 > 0 { pulse.set_muted(t, index, false); }
 				gtk::Inhibit(false)
 			});
 			scales_box.pack_start(&scale, false, false, 0);
