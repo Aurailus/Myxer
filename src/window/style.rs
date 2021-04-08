@@ -24,7 +24,7 @@ pub fn style(window: &gtk::ApplicationWindow) {
 	let mut add_color = |identifier: &str, color: &gdk::RGBA| {
 		s.push_str("@define-color ");
 		s.push_str(identifier);
-		s.push_str(" ");
+		s.push(' ');
 		s.push_str(&colorsys::Rgb::new(color.red * 255.0, color.green * 255.0, color.blue * 255.0, None).to_css_string());
 		s.push_str(";\n");
 	};
@@ -46,7 +46,7 @@ pub fn style(window: &gtk::ApplicationWindow) {
  * The custom stylesheet used by Myxer.
  */
  
-const STYLE: &'static str = r#"
+const STYLE: &str = r#"
 .title {
 	padding-left: 3px;
 }

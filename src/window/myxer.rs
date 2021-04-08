@@ -238,7 +238,6 @@ impl Myxer {
 
 			let card_profiles = gio::SimpleAction::new("card_profiles", None);
 			let pulse = pulse.clone();
-			let window = window.clone();
 			let profiles = profiles.clone();
 			card_profiles.connect_activate(move |_, _| {
 				profiles.replace(Some(Profiles::new(&window, &pulse)));

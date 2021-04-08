@@ -2,7 +2,6 @@
  * Contains constants and base traits for specialized meter widgets.
  */
 
-use gtk;
 use gtk::prelude::*;
 use libpulse::volume::{ Volume, ChannelVolumes };
 
@@ -115,7 +114,6 @@ impl dyn Meter {
 
 		scale.set_inverted(true);
 		scale.set_draw_value(false);
-		scale.set_sensitive(false);
 		scale.set_increments(SCALE_STEP, SCALE_STEP);
 		scale.set_restrict_to_fill_level(false);
 

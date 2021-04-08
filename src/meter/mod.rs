@@ -2,8 +2,8 @@
  * Declares and re-exports the different Meter widgets.
  */
 
-mod meter;
-pub use meter::*;
+mod base_meter;
+pub use base_meter::*;
 
 mod sink_meter;
 pub use sink_meter::*;

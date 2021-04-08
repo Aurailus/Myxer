@@ -2,14 +2,13 @@
  * A specialized meter for representing sources.
  */
 
-use gtk;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
 
 use crate::pulse::Pulse;
 use crate::shared::Shared;
-use super::meter::{ Meter, MeterWidgets, MeterData };
-use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS };
+use super::base_meter::{ Meter, MeterWidgets, MeterData };
+use super::base_meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS };
 
 
 /**
@@ -221,7 +220,7 @@ impl Meter for SourceMeter {
 			if vol_scaled > 150 { vol_scaled = 150 }
 
 			let mut string = vol_scaled.to_string();
-			string.push_str("%");
+			string.push('%');
 			self.widgets.status.set_label(&string);
 
 			let status_ctx = self.widgets.status.get_style_context();

@@ -2,14 +2,13 @@
  * A specialized meter for representing application streams.
  */
 
-use gtk;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
 
 use crate::shared::Shared;
 use crate::pulse::{ Pulse, StreamType };
-use super::meter::{ Meter, MeterWidgets, MeterData };
-use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS, OUTPUT_ICONS };
+use super::base_meter::{ Meter, MeterWidgets, MeterData };
+use super::base_meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS, OUTPUT_ICONS };
 
 
 /**
@@ -68,8 +67,7 @@ impl StreamMeter {
 
 		if self.b_id.is_some() { self.widgets.status.disconnect(glib::signal::SignalHandlerId::from_glib(self.b_id.as_ref().unwrap().to_glib())) }
 		self.b_id = Some(self.widgets.status.connect_clicked(move |status| {
-			pulse.borrow_mut().set_muted(t, index,
-				!status.get_style_context().has_class("muted"));
+			pulse.borrow_mut().set_muted(t, index, !status.get_style_context().has_class("muted"));
 		}));
 	}
 
@@ -82,8 +80,7 @@ impl StreamMeter {
 		for (i, v) in self.data.volume.get().iter().enumerate() {
 			if let Some(scale) = self.widgets.scales_inner.get_children().get(i) {
 				let scale = scale.clone().downcast::<gtk::Scale>().expect("Scales box has non-scale children.");
-				scale.set_sensitive(!self.data.muted);
-				scale.set_value(v.0 as f64);
+				scale.set_value(if self.data.muted { 0.0 } else { v.0 as f64 });
 			}
 		}
 	}
@@ -144,7 +141,7 @@ impl Meter for StreamMeter {
 			if vol_scaled > 150 { vol_scaled = 150 }
 
 			let mut string = vol_scaled.to_string();
-			string.push_str("%");
+			string.push('%');
 			self.widgets.status.set_label(&string);
 
 			let status_ctx = self.widgets.status.get_style_context();

@@ -361,7 +361,7 @@ impl Pulse {
 						index: item.index,
 						icon: item.proplist.get_str("application.icon_name").unwrap_or_else(|| "audio-card".to_owned()),
 						name: item.name.clone().unwrap().into_owned(),
-						description: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
+						description: item.proplist.get_str("application.name").unwrap_or_else(|| "".to_owned()),
 						volume: item.volume,
 						muted: item.mute
 					},
@@ -393,7 +393,7 @@ impl Pulse {
 		/** Updates the client when a source output changes. */
 		fn tx_source_output(tx: &Sender<TxMessage>, result: ListResult<&SourceOutputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
-				let app_id = item.proplist.get_str("application.process.binary").unwrap_or("".to_owned()).to_lowercase();
+				let app_id = item.proplist.get_str("application.process.binary").unwrap_or_else(|| "".to_owned()).to_lowercase();
 				if app_id.contains("pavucontrol") || app_id.contains("myxer") { return; }
 				tx.send(TxMessage::StreamUpdate(StreamType::SourceOutput, TxStreamData {
 					data: MeterData {
@@ -401,7 +401,7 @@ impl Pulse {
 						index: item.index,
 						icon: item.proplist.get_str("application.icon_name").unwrap_or_else(|| "audio-card".to_owned()),
 						name: item.name.clone().unwrap().into_owned(),
-						description: item.proplist.get_str("application.name").unwrap_or("".to_owned()),
+						description: item.proplist.get_str("application.name").unwrap_or_else(|| "".to_owned()),
 						volume: item.volume,
 						muted: item.mute
 					},
@@ -415,7 +415,7 @@ impl Pulse {
 			if let ListResult::Item(item) = result {
 				tx.send(TxMessage::CardUpdate(CardData {
 					index: item.index,
-					name: item.proplist.get_str("device.description").unwrap_or("".to_owned()),
+					name: item.proplist.get_str("device.description").unwrap_or_else(|| "".to_owned()),
 					icon: item.proplist.get_str("device.icon_name").unwrap_or_else(|| "audio-card-pci".to_owned()),
 					profiles: item.profiles.iter().map(|p| (p.name.as_ref().unwrap().clone().into_owned(),
 						p.description.as_ref().unwrap().clone().into_owned())).collect(),
@@ -659,6 +659,7 @@ impl Pulse {
 				match stream.peek().unwrap() {
 					PeekResult::Hole(_) => stream.discard().unwrap(),
 					PeekResult::Data(b) => {
+						#[allow(clippy::transmute_ptr_to_ref)]
 						let buf = slice_as_array!(b, [u8; 4]).expect("Bad length.");
 						raw_peak = f32::from_le_bytes(*buf).max(raw_peak);
 						stream.discard().unwrap();
@@ -670,33 +671,34 @@ impl Pulse {
 			tx.send(TxMessage::Peak(t, index, peak)).unwrap();
 		}
 
-		let mut attr = BufferAttr::default();
-		attr.fragsize = 4;
-		attr.maxlength = u32::MAX;
+		let attr = BufferAttr {
+			fragsize: 4,
+			maxlength: u32::MAX,
+			..Default::default()
+		};
 		
 		let spec = Spec { channels: 1, format: Format::F32le, rate: 30 };
 		assert!(spec.is_valid());
 		
-		let s = Shared::new(Stream::new(&mut self.context.borrow_mut(), "Peak Detect", &spec, None).unwrap());
+		let stream = Shared::new(Stream::new(&mut self.context.borrow_mut(), "Peak Detect", &spec, None).unwrap());
 		{
-			let mut stream = s.borrow_mut();
+			let mut stream_mut = stream.borrow_mut();
 			if t == StreamType::SinkInput {
-				stream.set_monitor_stream(stream_index).unwrap();
+				stream_mut.set_monitor_stream(stream_index).unwrap();
 			}
 
 			let mut mainloop = self.mainloop.borrow_mut();
 			mainloop.lock();
-			stream.connect_record(source, Some(&attr),
+			stream_mut.connect_record(source, Some(&attr),
 				StreamFlagSet::DONT_MOVE | StreamFlagSet::ADJUST_LATENCY | StreamFlagSet::PEAK_DETECT).unwrap();
 			mainloop.unlock();
 
-			let t = t.clone();
-			let sc = s.clone();
+			let stream_clone = stream.clone();
 			let txc = self.channel.tx.clone();
-			stream.set_read_callback(Some(Box::new(move |_| read_callback(&mut sc.borrow_mut(), t, stream_index, &txc))));
+			stream_mut.set_read_callback(Some(Box::new(move |_| read_callback(&mut stream_clone.borrow_mut(), t, stream_index, &txc))));
 		}
 
-		return s;
+		stream
 	}
 
 

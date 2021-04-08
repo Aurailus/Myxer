@@ -3,7 +3,6 @@
  * Has a dropdown that allows the current card profile to be changed.
  */
 
-use gtk;
 use gtk::prelude::*;
 use glib::translate::ToGlib;
 use glib::translate::FromGlib;

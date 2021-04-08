@@ -3,6 +3,8 @@
  * This module serves as the main entry point to the application.
  */
 
+#![allow(clippy::tabs_in_doc_comments)]
+
 use gio::prelude::*;
 
 mod card;
