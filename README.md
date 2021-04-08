@@ -52,7 +52,7 @@ Myxer is licensed under the [GNU General Public License v3](https://github.com/A
 
 <h3 align="center">Heard enough? Download the <a href="https://github.com/Aurailus/Myxer/releases">Latest Release</a> now.</h3>
 
-<p align="center"><a href="https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.zip">Latest Artifact</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/BUILDING.md">Building</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md">Contributing</a></p>
+<p align="center"><a href="https://nightly.link/Aurailus/myxer/workflows/release/master/myxer.zip">Latest Artifact</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/BUILDING.md">Building</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md">Contributing</a></p>
 
 <br>
 <br>
