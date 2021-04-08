@@ -18,10 +18,17 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install Dependencies
       run: sudo apt install libpango1.0-dev libatk1.0-dev libgtk-3-dev libpulse-dev
-    - name: Build
+    - name: Build Executable
       run: cargo build --verbose --release
+    - name: Build Debian
+      run: cargo deb --verbose
     - name: Upload Artifact
       uses: actions/upload-artifact@v2.2.2
       with:
-        name: Myxer
+        name: myxer
         path: target/release/myxer
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2.2.2
+      with:
+        name: Myxer.deb
+        path: target/debian/Myxer*
