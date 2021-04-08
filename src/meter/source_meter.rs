@@ -203,6 +203,7 @@ impl Meter for SourceMeter {
 		if data.description != self.data.description {
 			self.data.description = data.description.clone();
 			self.widgets.label.set_label(&self.data.description);
+			self.widgets.app_button.set_tooltip_text(Some(&self.data.description));
 		}
 
 		if volume_changed || data.muted != self.data.muted {
