@@ -1,4 +1,14 @@
+/*!
+ * Contains the About window.
+ */
+
 use gtk::prelude::*;
+
+
+/**
+ * Creates and runs the About popup window,
+ * which contains information about the app, license, and Auri.
+ */
 
 pub fn about() {
 	let about = gtk::AboutDialog::new();

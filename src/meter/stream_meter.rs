@@ -1,3 +1,7 @@
+/*!
+ * A specialized meter for representing application streams.
+ */
+
 use gtk;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
@@ -7,7 +11,12 @@ use crate::pulse::{ Pulse, StreamType };
 use super::meter::{ Meter, MeterWidgets, MeterData };
 use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS, OUTPUT_ICONS };
 
-// A meter for an audio input / output stream.
+
+/**
+ * A meter widget representing an application stream,
+ * be it a sink input or a source output.
+ */
+
 pub struct StreamMeter {
 	pub widget: gtk::Box,
 
@@ -22,6 +31,11 @@ pub struct StreamMeter {
 }
 
 impl StreamMeter {
+
+	/**
+	 * Creates a new StreamMeter.
+	 */
+
 	pub fn new(pulse: Shared<Pulse>) -> Self {
 		let widgets = Meter::build_meter();
 		Self {
@@ -34,6 +48,12 @@ impl StreamMeter {
 			split: false, peak: None, b_id: None
 		}
 	}
+
+
+	/**
+	 * Rebuilds widgets that are dependent on the Pulse instance or the stream index.
+	 * Reconnects the widgets to the Pulse instance, if one is provided.
+	 */
 
 	fn rebuild_widgets(&mut self) {
 		let scales = Meter::build_scales(&self.pulse, &self.data, self.split);
@@ -52,6 +72,11 @@ impl StreamMeter {
 				!status.get_style_context().has_class("muted"));
 		}));
 	}
+
+
+	/**
+	 * Updates each scale widget to reflect the current volume level.
+	 */
 
 	fn update_widgets(&mut self) {
 		for (i, v) in self.data.volume.get().iter().enumerate() {

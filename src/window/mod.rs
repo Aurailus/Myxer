@@ -1,3 +1,7 @@
+/*!
+ * Declares and re-exports modules pretaining to app windows.
+ */
+
 mod style;
 
 mod myxer;

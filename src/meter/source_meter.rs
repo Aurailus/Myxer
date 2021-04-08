@@ -1,3 +1,7 @@
+/*!
+ * A specialized meter for representing sources.
+ */
+
 use gtk;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
@@ -7,13 +11,17 @@ use crate::shared::Shared;
 use super::meter::{ Meter, MeterWidgets, MeterData };
 use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, INPUT_ICONS };
 
-// A meter for a source.
+
+/**
+ * A meter widget representing a source.
+ * Has interactions to allow changing the active source.
+ */
+
 pub struct SourceMeter {
 	pub widget: gtk::Box,
 
 	data: MeterData,
 	widgets: MeterWidgets,
-	// meters: Shared<Meters>,
 	pulse: Shared<Pulse>,
 
 	split: bool,
@@ -24,6 +32,11 @@ pub struct SourceMeter {
 }
 
 impl SourceMeter {
+
+	/**
+	 * Creates a new SourceMeter.
+	 */
+
 	pub fn new(pulse: Shared<Pulse>) -> Self {
 		let widgets = Meter::build_meter();
 
@@ -31,13 +44,18 @@ impl SourceMeter {
 			widget: widgets.root.clone(),
 			
 			pulse,
-			// meters,
 			widgets,
 			data: MeterData::default(),
 
 			split: false, peak: None, l_id: None, s_id: None
 		}
 	}
+
+
+	/**
+	 * Rebuilds widgets that are dependent on the Pulse instance or the source index.
+	 * Reconnects the widgets to the Pulse instance, if one is provided.
+	 */
 
 	fn rebuild_widgets(&mut self) {
 		let scales = Meter::build_scales(&self.pulse, &self.data, self.split);
@@ -67,6 +85,11 @@ impl SourceMeter {
 		}));
 	}
 
+
+	/**
+	 * Updates each scale widget to reflect the current volume level.
+	 */
+
 	fn update_widgets(&mut self) {
 		for (i, v) in self.data.volume.get().iter().enumerate() {
 			if let Some(scale) = self.widgets.scales_inner.get_children().get(i) {
@@ -76,6 +99,12 @@ impl SourceMeter {
 			}
 		}
 	}
+
+
+	/**
+	 * Shows a popup menu on the top button, with items to set
+	 * the Sink as default, and change the visible source.
+	 */
 
 	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<Pulse>, index: u32) {
 		let pulse = pulse_shr.borrow_mut();

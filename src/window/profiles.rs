@@ -1,3 +1,7 @@
+/*!
+ * Contains the Card Profiles window and associated data structs.
+ */
+
 use std::collections::HashMap;
 
 use gtk::prelude::*;
@@ -6,9 +10,10 @@ use crate::card::Card;
 use crate::pulse::Pulse;
 use crate::shared::Shared;
 
-struct Container {
-	live: bool
-}
+
+/**
+ * Stores the created Card widgets.
+ */
 
 struct Cards {
 	cards: HashMap<u32, Card>,
@@ -16,27 +21,44 @@ struct Cards {
 }
 
 impl Cards {
+	
+	/**
+	 * Initializes the structure.
+	 */
+
 	pub fn new() -> Self {
 		Cards { cards: HashMap::new(), cards_box: gtk::Box::new(gtk::Orientation::Vertical, 8) }
 	}
 }
 
+
+/**
+ * The Card Profiles popup window.
+ * Allows listing and changing pulseaudio sound Card profiles.
+ */
+
 pub struct Profiles {
 	cards: Shared<Cards>,
 	pulse: Shared<Pulse>,
 
-	live: Shared<Container>
+	/** Indicates if the popup should remain open. */
+	live: Shared<bool>
 }
 
 impl Profiles {
+
+	/**
+	 * Creates the Card Profiles window, and its contents.
+	 */
+
 	pub fn new(parent: &gtk::ApplicationWindow, pulse: &Shared<Pulse>) -> Self {
 		let dialog = gtk::Dialog::with_buttons(Some("Card Profiles"), Some(parent), gtk::DialogFlags::all(), &[]);
 		dialog.set_border_width(0);
 
-		let live = Shared::new(Container { live: true });
+		let live = Shared::new(true);
 		dialog.connect_response(|s, _| s.emit_close());
 		let live_clone = live.clone();
-		dialog.connect_close(move |_| live_clone.borrow_mut().live = false);
+		dialog.connect_close(move |_| { live_clone.replace(false); });
 
 		let geom = gdk::Geometry {
 			min_width: 450, min_height: 550,
@@ -65,9 +87,13 @@ impl Profiles {
 		}
 	}
 
-	pub fn update(&mut self) -> bool {
-		// println!("Update");
 
+	/**
+	 * Updates the card widgets to the latest information,
+	 * returns a boolean indicating if the window should continue to be open or not.
+	 */
+
+	pub fn update(&mut self) -> bool {
 		let pulse = self.pulse.borrow_mut();
 		let mut cards = self.cards.borrow_mut();
 		for (index, data) in &pulse.cards {
@@ -82,14 +108,6 @@ impl Profiles {
 		}
 
 		cards.cards_box.show_all();
-
-		// let source_outputs_box = meters.source_outputs_box.clone();
-		// meters.source_outputs.retain(|index, meter| {
-		// 	let keep = pulse.source_outputs.contains_key(index);
-		// 	if !keep { source_outputs_box.remove(&meter.widget); }
-		// 	keep
-		// });
-
-		self.live.borrow().live
+		*self.live.borrow()
 	}
 }

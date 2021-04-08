@@ -1,3 +1,7 @@
+/*!
+ * A specialized meter for representing sinks.
+ */
+
 use gtk;
 use gtk::prelude::*;
 use glib::translate::{ ToGlib, FromGlib };
@@ -7,7 +11,12 @@ use crate::shared::Shared;
 use super::meter::{ Meter, MeterWidgets, MeterData };
 use super::meter::{ MAX_NATURAL_VOL, MAX_SCALE_VOL, OUTPUT_ICONS };
 
-// A meter for a sink.
+
+/**
+ * A meter widget representing a sink.
+ * Has interactions to allow changing the active sink.
+ */
+
 pub struct SinkMeter {
 	pub widget: gtk::Box,
 
@@ -23,6 +32,11 @@ pub struct SinkMeter {
 }
 
 impl SinkMeter {
+
+	/**
+	 * Creates a new SinkMeter.
+	 */
+
 	pub fn new(pulse: Shared<Pulse>) -> Self {
 		let widgets = Meter::build_meter();
 		Self {
@@ -35,6 +49,12 @@ impl SinkMeter {
 			split: false, peak: None, s_id: None, l_id: None
 		}
 	}
+
+
+	/**
+	 * Rebuilds widgets that are dependent on the Pulse instance or the sink index.
+	 * Reconnects the widgets to the Pulse instance, if one is provided.
+	 */
 
 	fn rebuild_widgets(&mut self) {
 		let scales = Meter::build_scales(&self.pulse, &self.data, self.split);
@@ -63,6 +83,11 @@ impl SinkMeter {
 		}));
 	}
 
+
+	/**
+	 * Updates each scale widget to reflect the current volume level.
+	 */
+
 	fn update_widgets(&mut self) {
 		for (i, v) in self.data.volume.get().iter().enumerate() {
 			if let Some(scale) = self.widgets.scales_inner.get_children().get(i) {
@@ -72,6 +97,12 @@ impl SinkMeter {
 			}
 		}
 	}
+
+
+	/**
+	 * Shows a popup menu on the top button, with items to set
+	 * the Sink as default, and change the visible sink.
+	 */
 
 	fn show_popup(trigger: &gtk::Button, pulse_shr: &Shared<Pulse>, index: u32) {
 		let pulse = pulse_shr.borrow_mut();

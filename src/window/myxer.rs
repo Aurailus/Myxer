@@ -1,3 +1,7 @@
+/*!
+ * Contains he main application window, and associated data structs.
+ */
+
 use std::collections::HashMap;
 
 use gtk::prelude::*;
@@ -9,9 +13,10 @@ use crate::shared::Shared;
 use super::{ about, Profiles };
 use crate::meter::{ Meter, SinkMeter, SourceMeter, StreamMeter };
 
-struct Container {
-	profiles: Option<Profiles>
-}
+
+/**
+ * Stores meter widgets and options.
+ */
 
 pub struct Meters {
 	pub sink: SinkMeter,
@@ -29,6 +34,14 @@ pub struct Meters {
 }
 
 impl Meters {
+
+	/**
+	 * Creates the Struct, and some base widgets,
+	 * including the Sink and Source meters.
+	 *
+	 * * `pulse` - The Pulse instance used by the app.
+	 */
+
 	pub fn new(pulse: &Shared<Pulse>) -> Self {
 		let sink = SinkMeter::new(pulse.clone());
 
@@ -59,10 +72,20 @@ impl Meters {
 		}
 	}
 
+
+	/**
+	 * Toggles the show visualizers setting, and returns its current state.
+	 */
+
 	fn toggle_visualizers(&mut self) -> bool {
 		self.show_visualizers = !self.show_visualizers;
 		self.show_visualizers
 	}
+
+
+	/**
+	 * Toggles the separate channels setting, and returns its current state.
+	 */
 
 	fn toggle_separate_channels(&mut self) -> bool {
 		self.separate_channels = !self.separate_channels;
@@ -70,14 +93,28 @@ impl Meters {
 	}
 }
 
+
+/**
+ * The main Myxer application window,
+ * Displays meters for each sink, source, sink input, and source output.
+ */
+
 pub struct Myxer {
 	pulse: Shared<Pulse>,
 	meters: Shared<Meters>,
 
-	profiles: Shared<Container>
+	profiles: Shared<Option<Profiles>>
 }
 
 impl Myxer {
+
+	/**
+	 * Initializes the main window.
+	 *
+	 * * `app` - The GTK application.
+	 * * `pulse` - The Pulse store instance.
+	 */
+
 	pub fn new(app: &gtk::Application, pulse: &Shared<Pulse>) -> Self {
 		let window = gtk::ApplicationWindow::new(app);
 		let header = gtk::HeaderBar::new();
@@ -189,7 +226,7 @@ impl Myxer {
 			window.show_all();
 		}
 
-		let profiles = Shared::new(Container { profiles: None });
+		let profiles = Shared::new(None);
 
 		{
 			let actions = gio::SimpleActionGroup::new();
@@ -204,7 +241,7 @@ impl Myxer {
 			let window = window.clone();
 			let profiles = profiles.clone();
 			card_profiles.connect_activate(move |_, _| {
-				profiles.borrow_mut().profiles = Some(Profiles::new(&window, &pulse));
+				profiles.replace(Some(Profiles::new(&window, &pulse)));
 			});
 			actions.add_action(&card_profiles);
 
@@ -226,10 +263,16 @@ impl Myxer {
 		}
 	}
 
+
+	/**
+	 * Updates the app's widgets based on information stored in the Pulse instance.
+	 * Kills the Card Profiles window if it has been requested.
+	 */
+
 	pub fn update(&mut self) {
 		let mut kill = false;
-		if let Some(profiles) = self.profiles.borrow_mut().profiles.as_mut() { kill = !profiles.update(); }
-		if kill { self.profiles.borrow_mut().profiles = None; }
+		if let Some(profiles) = self.profiles.borrow_mut().as_mut() { kill = !profiles.update(); }
+		if kill { self.profiles.replace(None); }
 
 		if self.pulse.borrow_mut().update() {
 			let pulse = self.pulse.borrow();

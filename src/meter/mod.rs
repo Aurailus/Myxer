@@ -1,3 +1,7 @@
+/*!
+ * Declares and re-exports the different Meter widgets.
+ */
+
 mod meter;
 pub use meter::*;
 

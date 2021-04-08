@@ -1,3 +1,8 @@
+/*!
+ * The main data-store / binding module that interacts with the pulse audio server.
+ * Monitors the pulse server for updates, and also exposes methods to request changes.
+ */
+
 use slice_as_array::{ slice_as_array, slice_as_array_transmute };
 
 use libpulse::def::BufferAttr;
@@ -19,7 +24,10 @@ use super::card::CardData;
 use super::meter::MeterData;
 
 
-/** Represents a stream's underlying libpulse type. */
+/**
+ * Represents a stream's underlying type.
+ */
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum StreamType {
 	Sink, SinkInput, Source, SourceOutput
@@ -30,7 +38,12 @@ impl Default for StreamType {
 }
 
 
-/** The message types that can be passed through the channel from async callbacks. */
+/**
+ * The different message types that can be passed from the pulse
+ * thread to the data store. They contain data related to the
+ * current state of the pulse server.
+ */
+
 enum TxMessage {
 	Default(String, String),
 	StreamUpdate(StreamType, TxStreamData),
@@ -41,7 +54,10 @@ enum TxMessage {
 }
 
 
-/** Transferrable information pretaining to a stream. */
+/**
+ * Transferrable information pretaining to a stream.
+ */
+
 #[derive(Debug)]
 pub struct TxStreamData {
 	pub data: MeterData,
@@ -49,7 +65,12 @@ pub struct TxStreamData {
 }
 
 
-/** Stored representation of a monitored stream. */
+/**
+ * Stored representation of a pulse stream.
+ * The stream index is not in this struct, but
+ * it is the index it is keyed under in its hashmap.
+ */
+
 pub struct StreamData {
 	pub data: MeterData,
 
@@ -64,7 +85,7 @@ struct Channel<T> { tx: Sender<T>, rx: Receiver<T> }
 
 
 /**
- * The main controller for all libpulse interactions.
+ * The main controller for all pulse server interactions.
  * Handles peak monitoring, stream discovery, and meter information.
  * Stores data for all known streams, allowing public access.
  */
@@ -89,8 +110,7 @@ pub struct Pulse {
 impl Pulse {
 
 	/**
-	 * Create a new pulse controller, configuring
-	 * (but not connecting to) the libpulse api.
+	 * Creates a new pulse controller, configuring (but not initializing) the pulse connection.
 	 */
 
 	pub fn new() -> Self {
@@ -178,8 +198,9 @@ impl Pulse {
 
 	/**
 	 * Asynchronously sets the default sink to the index provided.
+	 * This is sometimes described as the fallback device.
 	 *
-	 * @param {u32} sink - The sink index.
+	 * * `sink` - The sink index to set as the default.
 	 */
 
 	pub fn set_default_sink(&self, sink: u32) {
@@ -194,8 +215,9 @@ impl Pulse {
 
 	/**
 	 * Asynchronously sets the default source to the index provided.
+	 * This is sometimes described as the fallback device.
 	 *
-	 * @param {u32} source - The source index.
+	 * * `source` - The source index to set as the default.
 	 */
 
 	pub fn set_default_source(&self, source: u32) {
@@ -209,9 +231,10 @@ impl Pulse {
 
 
 	/**
-	 * Sets the active sink to the index provided.
+	 * Sets the 'active' sink to the index provided.
+	 * This is the sink that is currently displayed on the interface.
 	 *
-	 * @param {u32} sink - The sink index.
+	 * * `sink` - The sink index to set as active.
 	 */
 
 	pub fn set_active_sink(&mut self, sink: u32) {
@@ -220,9 +243,10 @@ impl Pulse {
 
 
 	/**
-	 * Sets the default source to the index provided.
+	 * Sets the 'active' source to the index provided.
+	 * This is the source that is currently displayed on the interface.
 	 *
-	 * @param {u32} source - The source index.
+	 * * `source` - The source to set as active.
 	 */
 
 	pub fn set_active_source(&mut self, source: u32) {
@@ -231,11 +255,12 @@ impl Pulse {
 
 
 	/**
-	 * Asychronously sets the volume of a stream to a new value.
+	 * Sets the volume of the stream to the volumes specified.
+	 * This operation is asynchronous, so changes will not be reflected immediately.
 	 *
-	 * @param {StreamType} t - The type of stream.
-	 * @param {u32} index - The index of the stream.
-	 * @param {ChannelVolumes} volumes - The desired volume.
+	 * * `t`       - The type of stream to set the volume of.
+	 * * `index`   - The index of the stream to set the volume of.
+	 * * `volumes` - The desired volumes to set the channels of the stream to.
 	 */
 
 	pub fn set_volume(&self, t: StreamType, index: u32, volumes: ChannelVolumes) {
@@ -255,23 +280,24 @@ impl Pulse {
 
 
 	/**
-	 * Asynchronously mutes or unmutes a stream.
+	 * Mutes or unmutes a stream.
+	 * This operation is asynchronous, so changes will not be reflected immediately.
 	 *
-	 * @param {StreamType} t - The type of stream.
-	 * @param {u32} index - The index of the stream.
-	 * @param {bool} muted - Whether the stream should be muted or not.
+	 * * `t`     - The type of stream to update.
+	 * * `index` - The index of the stream to update.
+	 * * `mute`  - Whether the stream should be muted or not.
 	 */
 
-	pub fn set_muted(&self, t: StreamType, index: u32, muted: bool) {
+	pub fn set_muted(&self, t: StreamType, index: u32, mute: bool) {
 		let mut introspect = self.context.borrow().introspect();
 		let mut mainloop = self.mainloop.borrow_mut();
 		mainloop.lock();
 
 		match t {
-			StreamType::Sink => drop(introspect.set_sink_mute_by_index(index, muted, None)),
-			StreamType::SinkInput => drop(introspect.set_sink_input_mute(index, muted, None)),
-			StreamType::Source => drop(introspect.set_source_mute_by_index(index, muted, None)),
-			StreamType::SourceOutput => drop(introspect.set_source_output_mute(index, muted, None))
+			StreamType::Sink => drop(introspect.set_sink_mute_by_index(index, mute, None)),
+			StreamType::SinkInput => drop(introspect.set_sink_input_mute(index, mute, None)),
+			StreamType::Source => drop(introspect.set_source_mute_by_index(index, mute, None)),
+			StreamType::SourceOutput => drop(introspect.set_source_output_mute(index, mute, None))
 		};
 
 		mainloop.unlock();
@@ -279,10 +305,11 @@ impl Pulse {
 
 
 	/**
-	 * Asynchronously sets a card's profile.
+	 * Set's a sound card's profile.
+	 * This effects how the card behaves, and how the system can utilize it.
 	 *
-	 * @param {u32} index - The card index.
-	 * @param {&str} profile - The profile name.
+	 * * `index`   - The card index to update.
+	 * * `profile` - The profile name to update the card to.
 	 */
 	 
 	pub fn set_card_profile(&self, index: u32, profile: &str) {
@@ -295,16 +322,19 @@ impl Pulse {
 
 
 	/**
-	 * Bind listeners to the required libpulse events, populate sink stores.
-	 * Separated from connect() for readability.
+	 * Binds listeners to server events, and triggers an
+	 * initial sweep to populate the internal stores.
+	 * Called by connect(), separated for readability.
 	 */
 
 	fn subscribe(&mut self) {
+		/** Updates the client when the server information changes. */
 		fn tx_server(tx: &Sender<TxMessage>, item: &ServerInfo<'_>) {
 			tx.send(TxMessage::Default(item.default_sink_name.clone().unwrap().into_owned(),
 				item.default_source_name.clone().unwrap().into_owned())).unwrap();
 		};
 
+		/** Updates the client when a sink changes. */
 		fn tx_sink(tx: &Sender<TxMessage>, result: ListResult<&SinkInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				tx.send(TxMessage::StreamUpdate(StreamType::Sink, TxStreamData {
@@ -322,6 +352,7 @@ impl Pulse {
 			};
 		};
 
+		/** Updates the client when a sink input changes. */
 		fn tx_sink_input(tx: &Sender<TxMessage>, result: ListResult<&SinkInputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				tx.send(TxMessage::StreamUpdate(StreamType::SinkInput, TxStreamData {
@@ -339,6 +370,7 @@ impl Pulse {
 			};
 		};
 
+		/** Updates the client when a source changes. */
 		fn tx_source(tx: &Sender<TxMessage>, result: ListResult<&SourceInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				let name = item.name.clone().unwrap().into_owned();
@@ -358,6 +390,7 @@ impl Pulse {
 			};
 		};
 
+		/** Updates the client when a source output changes. */
 		fn tx_source_output(tx: &Sender<TxMessage>, result: ListResult<&SourceOutputInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				let app_id = item.proplist.get_str("application.process.binary").unwrap_or("".to_owned()).to_lowercase();
@@ -377,6 +410,7 @@ impl Pulse {
 			};
 		};
 
+		/** Updates the client when a sound card changes. */
 		fn tx_card(tx: &Sender<TxMessage>, result: ListResult<&CardInfo<'_>>) {
 			if let ListResult::Item(item) = result {
 				tx.send(TxMessage::CardUpdate(CardData {
@@ -447,9 +481,8 @@ impl Pulse {
 
 
 	/**
-	 * Update the stored streams from the pending operations in the channel.
-	 *
-	 * @returns a value indicating if a visual update is required.
+	 * Handles queued messages from the pulse thread, updating the internal storage.
+	 * Returns a boolean indicating that a layout refresh is required.
 	 */
 
 	pub fn update(&mut self) -> bool {
@@ -478,7 +511,8 @@ impl Pulse {
 
 
 	/**
-	 * Closes the pulse connection and cleans up any dangling references.
+	 * Closes the connection to the pulse server, and cleans up any dangling monitors.
+	 * After this operation, no other methods should be called, and the instance should be freed from memory.
 	 */
 
 	pub fn cleanup(&mut self) {
@@ -493,10 +527,11 @@ impl Pulse {
 
 
 	/**
-	 * Updates the default ('fallback') sink and source.
+	 * Updates the stored default sink and source to the ones identified.
+	 * This method is called by the update method, the names are provided by the pulse server.
 	 *
-	 * @param {String} sink - The new default sink.
-	 * @param {String} source - The new default source.
+	 * * `sink`   - The default sink.
+	 * * `source` - The default source.
 	 */
 
 	fn update_default(&mut self, sink: String, source: String) {
@@ -519,10 +554,11 @@ impl Pulse {
 
 
 	/**
-	 * Updates a stream in the store, or creates a new one and begins monitoring.
+	 * Updates a stream in the store, or creates a new one and begins monitoring the peaks.
+	 * This method is called by the update method, the data is provided by the pulse server.
 	 *
-	 * @param {StreamType} t - The type of stream to update.
-	 * @param {&TxStreamData} stream - The stream's data.
+	 * * `t`      - The type of stream to update.
+	 * * `stream` - The new stream's data.
 	 */
 
 	fn update_stream(&mut self, t: StreamType, stream: &TxStreamData) {
@@ -553,9 +589,10 @@ impl Pulse {
 
 	/**
 	 * Removes a stream from the store, stopping the monitor, if there is one.
+	 * This method is called by the update method, the data is provided by the pulse server.
 	 *
-	 * @param {StreamType} t - The type of stream to remove.
-	 * @param {u32} index - The index of the stream to remove.
+	 * * `t`     - The type of stream to remove.
+	 * * `index` - The index of the stream to remove.
 	 */
 
 	fn remove_stream(&mut self, t: StreamType, index: u32) {
@@ -587,11 +624,12 @@ impl Pulse {
 
 
 	/**
-	 * Updates a stored stream's peak value.
+	 * Updates a stored stream's peak.
+	 * This method is called by the update method, the data is provided by a monitor stream.
 	 *
-	 * @param {StreamType} t - The type of stream to update.
-	 * @param {u32} index - The index of the stream to update.
-	 * @param {u32} peak - The peak value to set.
+	 * * `t`     - The type of stream to update.
+	 * * `index` - The index of the stream to update.
+	 * * `peak`  - The peak value to store.
 	 */
 
 	fn update_peak(&mut self, t: StreamType, index: u32, peak: u32) {
@@ -606,11 +644,12 @@ impl Pulse {
 
 	/**
 	 * Creates a monitor stream for the stream specified, and returns it.
-	 * Panics if there's an error. TODO: Don't panic.
+	 * Panics if there's an error.
+	 * TODO: Don't panic.
 	 *
-	 * @param {StreamType} t - The type of stream to monitor.
-	 * @param {Option<&str>} source - The source string of the stream, if there is one.
-	 * @param {u32} stream_index - The index of the stream to monitor.
+	 * * `t`            - The type of stream to monitor.
+	 * * `source`       - The source string of the stream, if one is needed.
+	 * * `stream_index` - The index of the stream to monitor.
 	 */
 
 	fn create_monitor_stream(&mut self, t: StreamType, source: Option<&str>, stream_index: u32) -> Shared<Stream> {
@@ -663,8 +702,9 @@ impl Pulse {
 
 	/**
 	 * Updates a card in the store, or creates a new one.
+	 * This method is called by the update method, the data is provided by the pulse server.
 	 *
-	 * @param {&CardData} data - The card's data.
+	 * * `data` - The card's data.
 	 */
 
 	fn update_card(&mut self, data: &CardData) {
@@ -675,8 +715,9 @@ impl Pulse {
 
 	/**
 	 * Removes a card from the store.
+	 * This method is called by the update method, the data is provided by the pulse server.
 	 *
-	 * @param {u32} index - The index of the stream to remove.
+	 * * `index` - The index of the stream to remove.
 	 */
 
 	fn remove_card(&mut self, index: u32) {

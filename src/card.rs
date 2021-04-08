@@ -1,3 +1,8 @@
+/*!
+ * A widget representing a pulseaudio sound card.
+ * Has a dropdown that allows the current card profile to be changed.
+ */
+
 use gtk;
 use gtk::prelude::*;
 use glib::translate::ToGlib;
@@ -7,7 +12,10 @@ use crate::pulse::Pulse;
 use crate::shared::Shared;
 
 
-/** Information relating to a Card. */
+/**
+ * Holds a Card's data.
+ */
+
 #[derive(Debug, Clone, Default)]
 pub struct CardData {
 	pub index: u32,
@@ -19,12 +27,23 @@ pub struct CardData {
 	pub active_profile: String
 }
 
+
+/**
+ * Holds a Card's widgets.
+ */
+
 struct CardWidgets {
 	root: gtk::Box,
 	
 	label: gtk::Label,
 	combo: gtk::ComboBoxText,
 }
+
+
+/**
+ * A widget representing a pulseaudio sound card.
+ * Has a dropdown that allows the current card profile to be changed.
+ */
 
 pub struct Card {
 	pub widget: gtk::Box,
@@ -36,6 +55,11 @@ pub struct Card {
 }
 
 impl Card {
+
+	/**
+	 * Constructs the GTK widgets required for the card widget.
+	 */
+
 	fn build() -> CardWidgets {
 		let root = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		root.set_widget_name("card");
@@ -64,6 +88,11 @@ impl Card {
 		}
 	}
 
+
+	/**
+	 * Creates a new card widget.
+	 */
+
 	pub fn new(pulse: Option<Shared<Pulse>>) -> Self {
 		let widgets = Card::build();
 		Self {
@@ -74,11 +103,24 @@ impl Card {
 		}
 	}
 
+
+	/**
+	 * Disconnect's a card widget from the Pulse instance,
+	 * in the event that significant information has changed for the callbacks to be invalid.
+	 */
+
 	fn disconnect(&mut self) {
 		if self.combo_connect_id.is_some() {
 			self.widgets.combo.disconnect(glib::signal::SignalHandlerId::from_glib(self.combo_connect_id.as_ref().unwrap().to_glib()));
 		}
 	}
+
+
+	/**
+	 * Connects a callback to the widget's dropdown,
+	 * so that changing the selected option changes the card's profile.
+	 * If the Pulse instance is None, the callback is not bound.
+	 */
 
 	fn connect(&mut self) {
 		if self.pulse.is_none() { return; }
@@ -89,6 +131,11 @@ impl Card {
 			pulse.borrow_mut().set_card_profile(index, &String::from(combo.get_active_id().unwrap()));
 		}));
 	}
+
+
+	/**
+	 * Updates the Card's data, and visually refreshes the required components.
+	 */
 
 	pub fn set_data(&mut self, data: &CardData) {
 		if data.index != self.data.index {

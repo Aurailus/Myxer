@@ -1,3 +1,7 @@
+/*!
+ * Contains constants and base traits for specialized meter widgets.
+ */
+
 use gtk;
 use gtk::prelude::*;
 use libpulse::volume::{ Volume, ChannelVolumes };
@@ -5,24 +9,28 @@ use libpulse::volume::{ Volume, ChannelVolumes };
 use crate::shared::Shared;
 use crate::pulse::{ Pulse, StreamType };
 
-// The maximum natural volume, i.e. 100%
+/** The maximum natural volume, i.e. 100% */
 pub const MAX_NATURAL_VOL: u32 = 65536;
 
-// The maximum scale volume, i.e. 150%
+/** The maximum scale volume, i.e. 150% */
 pub const MAX_SCALE_VOL: u32 = (MAX_NATURAL_VOL as f64 * 1.5) as u32;
 
-// The increment step of the scale, e.g. how far it moves when you press up & down.
+/** The increment step of the scale, e.g. how far it moves when you press up & down. */
 pub const SCALE_STEP: f64 = MAX_NATURAL_VOL as f64 / 20.0;
 
-// The icon names for the input meter statuses.
+/** The icon names for the input meter statuses. */
 pub const INPUT_ICONS: [&str; 4] = [ "microphone-sensitivity-muted-symbolic", "microphone-sensitivity-low-symbolic",
 	"microphone-sensitivity-medium-symbolic", "microphone-sensitivity-high-symbolic" ];
 
-// The icon names for the output meter statuses.
+/** The icon names for the output meter statuses. */
 pub const OUTPUT_ICONS: [&str; 4] = [ "audio-volume-muted-symbolic", "audio-volume-low-symbolic",
 	"audio-volume-medium-symbolic", "audio-volume-high-symbolic" ];
 
-// Contains properties controlling a meter's display.
+
+/**
+ * Holds a Meter widget's display data.
+ */
+
 #[derive(Debug, Clone, Default)]
 pub struct MeterData {
 	pub t: StreamType,
@@ -36,7 +44,11 @@ pub struct MeterData {
 	pub muted: bool,
 }
 
-// Stores references to all meter widgets.
+
+/**
+ * Holds references to a Meter's widgets.
+ */
+
 pub struct MeterWidgets {
 	pub root: gtk::Box,
 	
@@ -52,23 +64,52 @@ pub struct MeterWidgets {
 	pub scales_inner: gtk::Box,
 }
 
-// Trait for all meter types.
+
+/**
+ * The base trait for all Meter widgets.
+ * A Meter widget is a visual control consisting of a name,
+ * app icon, volume slider, and mute button.
+ */
+
 pub trait Meter {
-	// Gets the meter's current index
+	/**
+	 * Gets the meter's underlying stream index.
+	 */
+
 	fn get_index(&self) -> u32;
 
-	// Sets whether or not to split channels into individual scales.
+
+	/**
+	 * Sets whether or not to split channels into individual meters.
+	 *
+	 * * `split` - Whether or not channels should be separated.
+	 */
+
 	fn split_channels(&mut self, split: bool);
 
-	// Sets the meter's data.
+
+	/**
+	 * Updates the meter's data, and visually refreshes the required widgets.
+	 */
+
 	fn set_data(&mut self, data: &MeterData);
 
-	// Sets the meter's peak.
+
+	/**
+	 * Sets the meter's current peak.
+	 *
+	 * * `peak` - The meter's peak, or None if no peak indicator should be shown.
+	 */
+
 	fn set_peak(&mut self, peak: Option<u32>);
 }
 
 impl dyn Meter {
-	// Builds a single meter scale.
+
+	/**
+	 * Builds a scale. This may be for a single channel, or all channels.
+	 */
+
 	fn build_scale() -> gtk::Scale {
 		let scale = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, MAX_SCALE_VOL as f64, SCALE_STEP);
 
@@ -84,6 +125,16 @@ impl dyn Meter {
 
 		scale
 	}
+
+
+	/**
+	 * Builds the required scales for a Meter.
+	 * This may be one or more, depending on the state of the `split` variable.
+	 *
+	 * * `pulse` - The pulse store to bind events to.
+	 * * `data`  - The meter data to base the scales off of.
+	 * * `split` - Whether or not one merged bar should be created, or individual bars for each channel.
+	 */
 
 	pub fn build_scales(pulse: &Shared<Pulse>, data: &MeterData, split: bool) -> gtk::Box {
 		let t = data.t;
@@ -139,7 +190,11 @@ impl dyn Meter {
 		scales_box
 	}
 
-	// Builds a meter and returns a struct of all of them.
+
+	/**
+	 * Initializes all of the Widgets to make a meter, and returns them.
+	 */
+	 
 	pub fn build_meter() -> MeterWidgets {
 		let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		root.set_widget_name("meter");
