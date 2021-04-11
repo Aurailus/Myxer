@@ -118,10 +118,12 @@ impl Myxer {
 	pub fn new(app: &gtk::Application, pulse: &Shared<Pulse>) -> Self {
 		let window = gtk::ApplicationWindow::new(app);
 		let header = gtk::HeaderBar::new();
+		let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
 		let stack = gtk::Stack::new();
-		
+
 		{
-			window.set_title("Volume Mixer");
+			window.set_title("Myxer");
 			window.set_icon_name(Some("multimedia-volume-control"));
 
 			let geom = gdk::Geometry {
@@ -137,20 +139,22 @@ impl Myxer {
 			window.get_style_context().add_class("Myxer");
 			style::style(&window);
 
+			
 			let stack_switcher = gtk::StackSwitcher::new();
 			stack_switcher.set_stack(Some(&stack));
 
-			header.set_show_close_button(true);
 			header.set_custom_title(Some(&stack_switcher));
-
-			let title_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-			let title = gtk::Label::new(Some("Volume Mixer"));
-			title.get_style_context().add_class("title");
-			title_box.pack_start(&title, true, true, 0);
-			header.pack_start(&title_box);
-			header.set_decoration_layout(Some("icon:minimize,close"));
 			
-			window.set_titlebar(Some(&header));
+
+			//let title_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+			//let title = gtk::Label::new(Some("Volume Mixer"));
+			//title.get_style_context().add_class("title");
+			//title_box.pack_start(&title, true, true, 0);
+
+			//header.pack_start(&title_box);
+
+			container.add(&header);
+			window.add(&container);
 		}
 
 		{
@@ -223,7 +227,7 @@ impl Myxer {
 			stack.add_titled(&output, "output", "Output");
 			stack.add_titled(&input, "input", "Input");
 
-			window.add(&stack);
+			container.add(&stack);
 			window.show_all();
 		}
 

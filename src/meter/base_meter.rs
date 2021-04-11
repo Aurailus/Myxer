@@ -200,6 +200,7 @@ impl dyn Meter {
 	pub fn build_meter() -> MeterWidgets {
 		let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
 		root.set_widget_name("meter");
+		root.set_vexpand(true);
 
 		root.set_orientation(gtk::Orientation::Vertical);
 		root.set_hexpand(false);

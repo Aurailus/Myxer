@@ -51,8 +51,9 @@ impl Profiles {
 	 * Creates the Card Profiles window, and its contents.
 	 */
 
-	pub fn new(parent: &gtk::ApplicationWindow, pulse: &Shared<Pulse>) -> Self {
-		let dialog = gtk::Dialog::with_buttons(Some("Card Profiles"), Some(parent), gtk::DialogFlags::all(), &[]);
+	pub fn new(_parent: &gtk::ApplicationWindow, pulse: &Shared<Pulse>) -> Self {
+		let dialog = gtk::Dialog::new();
+		dialog.set_title("Card Profiles");
 		dialog.set_border_width(0);
 
 		let live = Shared::new(true);
@@ -92,7 +93,7 @@ impl Profiles {
 	 * Updates the card widgets to the latest information,
 	 * returns a boolean indicating if the window should continue to be open or not.
 	 */
-
+	
 	pub fn update(&mut self) -> bool {
 		let pulse = self.pulse.borrow_mut();
 		let mut cards = self.cards.borrow_mut();
