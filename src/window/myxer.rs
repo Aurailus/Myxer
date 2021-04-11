@@ -162,6 +162,7 @@ impl Myxer {
 			prefs_button.get_style_context().add_class("flat");
 			prefs_button.set_widget_name("preferences");
 			prefs_button.set_can_focus(false);
+			prefs_button.set_margin_end(16);
 			header.pack_end(&prefs_button);
 
 			let prefs = gtk::PopoverMenu::new();
