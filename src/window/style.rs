@@ -48,7 +48,7 @@ pub fn style(window: &gtk::ApplicationWindow) {
  
 const STYLE: &str = r#"
 .title {
-	padding-left: 3px;
+	margin-left: -6px;
 }
 
 .pad_side {
@@ -62,7 +62,6 @@ headerbar box:last-child {
 
 headerbar button#preferences.image-button {
 	border-radius: 16px;
-	margin-right: -6px;
 	padding: 0px;
 	margin-top: 8px;
 	margin-bottom: 8px;

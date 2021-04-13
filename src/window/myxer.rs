@@ -133,6 +133,7 @@ impl Myxer {
 				win_gravity: gdk::Gravity::Center
 			};
 
+			window.set_type_hint(gdk::WindowTypeHint::Dialog);
 			window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
 			window.get_style_context().add_class("Myxer");
 			style::style(&window);
@@ -143,13 +144,18 @@ impl Myxer {
 			header.set_show_close_button(true);
 			header.set_custom_title(Some(&stack_switcher));
 
-			let title_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+			let title_vert = gtk::Box::new(gtk::Orientation::Vertical, 0);
+			header.pack_start(&title_vert);
+
+			let title_hor = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+			title_vert.pack_start(&title_hor, true, true, 0);
+
+			let icon = gtk::Image::from_icon_name(Some("multimedia-volume-control"), gtk::IconSize::Button);
+			title_hor.pack_start(&icon, true, true, 3);
 			let title = gtk::Label::new(Some("Volume Mixer"));
 			title.get_style_context().add_class("title");
-			title_box.pack_start(&title, true, true, 0);
-			header.pack_start(&title_box);
-			header.set_decoration_layout(Some("icon:minimize,close"));
-			
+			title_hor.pack_start(&title, true, true, 0);
+
 			window.set_titlebar(Some(&header));
 		}
 
