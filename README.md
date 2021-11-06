@@ -1,16 +1,13 @@
 <h1 align="center">Myxer</h1>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_dark.png">
+  <img src="https://raw.githubusercontent.com/ErinvanderVeen/Myxer/master/media/myxer_dark.png">
 </p>
 
 <h3 align="center">A modern Volume Mixer for PulseAudio, built with you in mind.</h2>
 
 <p align="center">
-  <a href="https://github.com/Aurailus/Myxer/releases"><img src="https://github.com/Aurailus/Myxer/workflows/release/badge.svg" alt="Releases"/></a>
-  <a href="https://github.com/Aurailus/Myxer/commits/master"><img src="https://img.shields.io/github/commit-activity/m/aurailus/myxer.svg?logo=github&logoColor=cccccc&labelColor=2A3037&label=commit%20activity" alt="Commit Activity"/></a>
-  <a href="https://aurail.us/discord"><img src="https://img.shields.io/discord/416379773976051712.svg?color=7289DA&label=discord&logo=discord&logoColor=cccccc&labelColor=2A3037" alt="Join Discord"/></a>
-  <a href="https://patreon.com/Aurailus"><img src="https://img.shields.io/static/v1?label=patreon&message=support&color=FF6952&logo=patreon&logoColor=cccccc&labelColor=2A3037" alt="Support on Patreon"/></a>
+  <a href="https://github.com/ErinvanderVeen/Myxer/releases"><img src="https://github.com/ErinvanderVeen/Myxer/workflows/release/badge.svg" alt="Releases"/></a>
 </p>
 
 <br>
@@ -20,7 +17,7 @@ Myxer is a lightweight, powerful Volume Mixer built with modern UI design for a 
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_light.png" align="left" width="600">
+<img src="https://raw.githubusercontent.com/ErinvanderVeen/Myxer/master/media/myxer_light.png" align="left" width="600">
 
 ### Adaptive
 
@@ -33,7 +30,7 @@ Additionally, one can easily configure PulseAudio panel plugins to open Myxer wh
 <br>
 <br>
 
-<img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_advanced.png" align="right" width="625">
+<img src="https://raw.githubusercontent.com/ErinvanderVeen/Myxer/master/media/myxer_advanced.png" align="right" width="625">
 
 ### Advanced
 
@@ -45,18 +42,18 @@ Behind the context menu, there are options to show individual audio channels and
 
 <h3 align="center">Open Source</h2>
 
-Myxer is licensed under the [GNU General Public License v3](https://github.com/Aurailus/Myxer/blob/master/LICENSE.md). It's being actively developed, and all issues and pull requests will be responded to promptly. It's also super lightweight, and should only take an hour or two to read through the source code, if that's your sort of thing. See [Contributing](https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md) for more details.
+Myxer is licensed under the [GNU General Public License v3](https://github.com/ErinvanderVeen/Myxer/blob/master/LICENSE.md). It's being actively developed, and all issues and pull requests will be responded to promptly. It's also super lightweight, and should only take an hour or two to read through the source code, if that's your sort of thing. See [Contributing](https://github.com/ErinvanderVeen/Myxer/blob/master/CONTRIBUTING.md) for more details.
 
 <br>
 <br>
 
-<h3 align="center">Heard enough? Download the <a href="https://github.com/Aurailus/Myxer/releases">Latest Release</a> now.</h3>
+<h3 align="center">Heard enough? Download the <a href="https://github.com/ErinvanderVeen/Myxer/releases">Latest Release</a> now.</h3>
 
-<p align="center"><a href="https://nightly.link/Aurailus/myxer/workflows/release/master/myxer.zip">Latest Artifact</a> (<a href="https://nightly.link/Aurailus/myxer/workflows/release/master/Myxer.deb.zip">Deb</a>) &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/BUILDING.md">Building</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/Aurailus/Myxer/blob/master/CONTRIBUTING.md">Contributing</a></p>
+<p align="center"><a href="https://github.com/ErinvanderVeen/Myxer/blob/master/BUILDING.md">Building</a> &nbsp;&nbsp;&bullet;&nbsp;&nbsp; <a href="https://github.com/ErinvanderVeen/Myxer/blob/master/CONTRIBUTING.md">Contributing</a></p>
 
 <br>
 <br>
 <br>
 
 &copy; [Auri Collings](https://twitter.com/Aurailus), 2021. Made with <3
-
+&copy; Erin van der Veen, 2021.
