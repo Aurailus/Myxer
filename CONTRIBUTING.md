@@ -14,4 +14,4 @@ File names and variable names are `snake_case`'d, structs and traits are `Pascal
 
 ## License
 
-Read through the [License](https://github.com/Aurailus/Myxer/blob/master/LICENSE.md) before contributing. All contributions must be under the same license.
+Read through the [License](https://github.com/ErinvanderVeen/Myxer/blob/master/LICENSE.md) before contributing. All contributions must be under the same license.

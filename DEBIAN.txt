@@ -1,1 +1,0 @@
-Myxer is a lightweight, powerful Volume Mixer. Devices, Streams, and even Card profiles can be managed, providing a complete replacement for the stock Volume Mixer.
