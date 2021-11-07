@@ -4,37 +4,26 @@ version = "1.2.1"
 description = "A modern Volume Mixer for PulseAudio"
 readme = "README.md"
 license = "GPL-3.0"
-authors = [ "Auri <me@auri.xyz>" ]
-homepage = "https://myxer.aurailus.com"
-repository = "https://github.com/Aurailus/Myxer"
+authors = [ "Auri <me@auri.xyz>", "Erin van der Veen <erin@erinvanderveen.nl>" ]
+homepage = "https://github.com/ErinvanderVeen/Myxer"
+repository = "https://github.com/ErinvanderVeen/Myxer"
 edition = "2018"
 
-[package.metadata.deb]
-name = "Myxer"
-section = "sound"
-copyright = "(c) Auri Collings, 2021"
-extended-description-file = "DEBIAN.txt"
-assets = [
-	["target/release/myxer", "usr/bin/", "755"],
-  ["README.md", "usr/share/doc/Myxer/README", "644"],
-	["Myxer.desktop", "/usr/share/applications/", "644"]
-]
-
 [dependencies]
-gdk = "0.13.2"
-glib = "0.10.3"
-pango = "0.9.1"
-colorsys = "0.6.3"
-slice_as_array = "1.1.0"
+gdk = "0.14"
+glib = "0.14"
+pango = "0.14"
+colorsys = "0.5"
+slice_as_array = "1.1"
 
 [dependencies.libpulse]
-version = "2.23.0"
+version = "2.25"
 package = "libpulse-binding"
 
 [dependencies.gtk]
-version = "0.9.0"
-features = [ "v3_22" ]
+version = "0.14"
+features = [ "v3_24" ]
 
 [dependencies.gio]
-version = "*"
-features = [ "v2_44" ]
+version = "0.14"
+features = [ "v2_66" ]
