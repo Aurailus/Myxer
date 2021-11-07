@@ -5,18 +5,17 @@
 
 #![allow(clippy::tabs_in_doc_comments)]
 
-use gio::prelude::*;
-
 mod card;
 mod meter;
 mod pulse;
-mod window;
 mod shared;
+mod window;
 
+use gdk::prelude::{ApplicationExt, ApplicationExtManual};
 use pulse::Pulse;
-use window::Myxer;
 use shared::Shared;
-
+use std::time::Duration;
+use window::Myxer;
 
 /**
  * Attempts to start the application.
@@ -28,19 +27,17 @@ use shared::Shared;
  */
 
 fn main() {
-	let pulse = Shared::new(Pulse::new());
-	
-	let app = gtk::Application::new(Some("com.aurailus.myxer"), Default::default())
-		.expect("Failed to initialize GTK application.");
+    let pulse = Shared::new(Pulse::new());
 
-	let pulse_clone = pulse.clone();
-	app.connect_activate(|app| drop(app.register::<gio::Cancellable>(None)));
-	app.connect_startup(move |app| activate(app, &pulse_clone));
-	app.run(&[]);
+    let app = gtk::Application::new(Some("com.aurailus.myxer"), Default::default());
 
-	pulse.borrow_mut().cleanup();
+    let pulse_clone = pulse.clone();
+    app.connect_activate(|app| drop(app.register::<gio::Cancellable>(None)));
+    app.connect_startup(move |app| activate(app, &pulse_clone));
+    app.run();
+
+    pulse.borrow_mut().cleanup();
 }
-
 
 /**
  * Called by GTK when the application has initialized. Creates the main Myxer
@@ -48,10 +45,10 @@ fn main() {
  */
 
 fn activate(app: &gtk::Application, pulse: &Shared<Pulse>) {
-	let mut myxer = Myxer::new(app, pulse);
+    let mut myxer = Myxer::new(app, pulse);
 
-	glib::timeout_add_local(1000 / 30, move || {
-		myxer.update();
-		glib::Continue(true)
-	});
+    glib::timeout_add_local(Duration::from_millis(1000 / 30), move || {
+        myxer.update();
+        glib::Continue(true)
+    });
 }
