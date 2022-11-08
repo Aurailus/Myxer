@@ -1,5 +1,5 @@
 /*!
- * Declares and re-exports modules pretaining to app windows.
+ * Declares and re-exports modules pertaining to app windows.
  */
 
 mod style;
