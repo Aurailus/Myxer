@@ -56,7 +56,7 @@ enum TxMessage {
 
 
 /**
- * Transferrable information pretaining to a stream.
+ * Transferrable information pertaining to a stream.
  */
 
 #[derive(Debug)]
