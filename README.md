@@ -1,7 +1,7 @@
 <h1 align="center">Myxer</h1>
 
 > [!IMPORTANT]  
-> This project is in maintenance only mode. Mixer currently fulfills all of the use-cases I have for it, and I am too busy with work to justify time implementing feature requests for others. Pull Requests are welcome, so long as they maintain a high quality of code, and maintain the vision of the project. Thank you all! :heart:
+> This project is in maintenance only mode. Myxer currently fulfills all of the use-cases I have for it, and I am too busy with work to justify time implementing feature requests for others. Pull Requests are welcome, so long as they maintain a high quality of code, and maintain the vision of the project. Thank you all! :heart:
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Aurailus/Myxer/master/media/myxer_dark.png">
