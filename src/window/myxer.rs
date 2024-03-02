@@ -131,8 +131,6 @@ impl Meters {
 			let key = parts.next().ok_or("no key")?;
 			let value = parts.next().ok_or("no value")?;
 
-			println!("{}: {}", key, value);
-
 			match key {
 				"show_visualizers" => self.show_visualizers = value.parse().unwrap_or(self.show_visualizers),
 				"separate_channels" => self.separate_channels = value.parse().unwrap_or(self.separate_channels),
@@ -226,9 +224,6 @@ impl Myxer {
 			window.set_type_hint(gdk::WindowTypeHint::Dialog);
 			window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
 			window.get_style_context().add_class("Myxer");
-			if meters.borrow().remember_position {
-				window.move_(meters.borrow().window_position.0, meters.borrow().window_position.1);
-			}
 			style::style(&window);
 
 			let stack_switcher = gtk::StackSwitcher::new();
@@ -250,6 +245,10 @@ impl Myxer {
 			title_hor.pack_start(&title, true, true, 0);
 
 			window.set_titlebar(Some(&header));
+
+			if meters.borrow().remember_position {
+				window.move_(meters.borrow().window_position.0, meters.borrow().window_position.1);
+			}
 		}
 
 		{
