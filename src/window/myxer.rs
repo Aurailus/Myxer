@@ -23,14 +23,19 @@ pub struct Meters {
 	pub sink_box: gtk::Box,
 	pub sink_inputs: HashMap<u32, StreamMeter>,
 	pub sink_inputs_box: gtk::Box,
-	
+
 	pub source: SourceMeter,
 	pub source_box: gtk::Box,
 	pub source_outputs: HashMap<u32, StreamMeter>,
 	pub source_outputs_box: gtk::Box,
 
 	pub show_visualizers: bool,
-	pub separate_channels: bool
+	pub separate_channels: bool,
+	pub remember_position: bool,
+
+	pub window_position: (i32, i32),
+
+	pub _config_path: std::path::PathBuf
 }
 
 impl Meters {
@@ -57,11 +62,20 @@ impl Meters {
 
 		let sink_inputs_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		sink_inputs_box.get_style_context().add_class("pad_side");
-		
+
 		let source_outputs_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 		source_outputs_box.get_style_context().add_class("pad_side");
 
-		Meters {
+		// get config path
+		let home_dir = std::env::var_os("HOME").ok_or("no home directory").unwrap();
+		let mut config_path = std::path::PathBuf::new();
+		config_path.push(&home_dir);
+		config_path.push(".config");
+		config_path.push("myxer");
+		config_path.push("myxer.conf");
+
+		// create the Meters struct
+		let mut meters = Meters {
 			sink, source,
 			sink_box, source_box,
 			sink_inputs_box, source_outputs_box,
@@ -69,8 +83,68 @@ impl Meters {
 			source_outputs: HashMap::new(),
 			show_visualizers: true,
 			separate_channels: false,
-		}
+			remember_position: false,
+
+			window_position: (0, 0),
+
+			_config_path: config_path
+		};
+
+		// load config
+		let _ = meters.load_config();
+
+		meters
 	}
+
+
+	/*
+	 * Saves the current settings to the configuration file.
+	 */
+
+	pub fn save_config(&self) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+		let config_path = self._config_path.clone();
+
+		let config_content = format!(
+			"show_visualizers={}\nseparate_channels={}\nremember_position={}\nwindow_position_x={}\nwindow_position_y={}\n",
+			self.show_visualizers, self.separate_channels, self.remember_position, self.window_position.0, self.window_position.1
+		);
+
+		let dir_name = std::path::Path::new(&config_path).parent().ok_or("incorrect directory")?;
+		std::fs::create_dir_all(dir_name)?;
+		std::fs::write(&config_path, config_content)?;
+
+		Ok(config_path)
+	}
+
+
+	/**
+	 * Loads the settings from the configuration file.
+	 */
+
+	pub fn load_config(&mut self) -> Result<(std::ffi::OsString, String), Box<dyn std::error::Error>> {
+		let config_path = self._config_path.clone();
+
+		let config_content = std::fs::read_to_string(&config_path)?;
+
+		for line in config_content.lines() {
+			let mut parts = line.split('=');
+			let key = parts.next().ok_or("no key")?;
+			let value = parts.next().ok_or("no value")?;
+
+			println!("{}: {}", key, value);
+
+			match key {
+				"show_visualizers" => self.show_visualizers = value.parse().unwrap_or(self.show_visualizers),
+				"separate_channels" => self.separate_channels = value.parse().unwrap_or(self.separate_channels),
+				"remember_position" => self.remember_position = value.parse().unwrap_or(self.remember_position),
+				"window_position_x" => self.window_position.0 = value.parse().unwrap_or(self.window_position.0),
+				"window_position_y" => self.window_position.1 = value.parse().unwrap_or(self.window_position.1),
+				_ => {}
+			}
+		}
+
+		Ok((config_path.file_name().unwrap().to_os_string(), config_content))
+   }
 
 
 	/**
@@ -79,6 +153,7 @@ impl Meters {
 
 	fn toggle_visualizers(&mut self) -> bool {
 		self.show_visualizers = !self.show_visualizers;
+		let _ = self.save_config();
 		self.show_visualizers
 	}
 
@@ -89,7 +164,19 @@ impl Meters {
 
 	fn toggle_separate_channels(&mut self) -> bool {
 		self.separate_channels = !self.separate_channels;
+		let _ = self.save_config();
 		self.separate_channels
+	}
+
+
+	/**
+	 * Toggles the remember position setting, and returns its current state.
+	 */
+
+	fn toggle_remember_position(&mut self) -> bool {
+		self.remember_position = !self.remember_position;
+		let _ = self.save_config();
+		self.remember_position
 	}
 }
 
@@ -100,6 +187,8 @@ impl Meters {
  */
 
 pub struct Myxer {
+	window: gtk::ApplicationWindow,
+
 	pulse: Shared<Pulse>,
 	meters: Shared<Meters>,
 
@@ -119,7 +208,8 @@ impl Myxer {
 		let window = gtk::ApplicationWindow::new(app);
 		let header = gtk::HeaderBar::new();
 		let stack = gtk::Stack::new();
-		
+		let meters = Shared::new(Meters::new(pulse));
+
 		{
 			window.set_title("Volume Mixer");
 			window.set_icon_name(Some("multimedia-volume-control"));
@@ -136,6 +226,9 @@ impl Myxer {
 			window.set_type_hint(gdk::WindowTypeHint::Dialog);
 			window.set_geometry_hints::<gtk::ApplicationWindow>(None, Some(&geom), gdk::WindowHints::MIN_SIZE | gdk::WindowHints::MAX_SIZE);
 			window.get_style_context().add_class("Myxer");
+			if meters.borrow().remember_position {
+				window.move_(meters.borrow().window_position.0, meters.borrow().window_position.1);
+			}
 			style::style(&window);
 
 			let stack_switcher = gtk::StackSwitcher::new();
@@ -184,6 +277,11 @@ impl Myxer {
 			split_channels.set_action_name(Some("app.split_channels"));
 			prefs_box.add(&split_channels);
 
+			let remember_position = gtk::ModelButton::new();
+			remember_position.set_property_text(Some("Remember Position"));
+			remember_position.set_action_name(Some("app.remember_position"));
+			prefs_box.add(&remember_position);
+
 			let card_profiles = gtk::ModelButton::new();
 			card_profiles.set_property_text(Some("Card Profiles..."));
 			card_profiles.set_action_name(Some("app.card_profiles"));
@@ -201,7 +299,6 @@ impl Myxer {
 		}
 
 		pulse.borrow_mut().connect();
-		let meters = Shared::new(Meters::new(pulse));
 
 		{
 			let output = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -236,6 +333,8 @@ impl Myxer {
 		let profiles = Shared::new(None);
 
 		{
+			let window = window.clone();
+
 			let actions = gio::SimpleActionGroup::new();
 			window.insert_action_group("app", Some(&actions));
 
@@ -252,17 +351,23 @@ impl Myxer {
 			actions.add_action(&card_profiles);
 
 			let meters_clone = meters.clone();
-			let split_channels = gio::SimpleAction::new_stateful("split_channels", glib::VariantTy::new("bool").ok(), &false.to_variant());
+			let split_channels = gio::SimpleAction::new_stateful("split_channels", glib::VariantTy::new("bool").ok(), &(meters_clone.borrow().separate_channels).to_variant());
 			split_channels.connect_activate(move |s, _| s.set_state(&meters_clone.borrow_mut().toggle_separate_channels().to_variant()));
 			actions.add_action(&split_channels);
 
 			let meters_clone = meters.clone();
-			let show_visualizers = gio::SimpleAction::new_stateful("show_visualizers", glib::VariantTy::new("bool").ok(), &true.to_variant());
+			let remember_position = gio::SimpleAction::new_stateful("remember_position", glib::VariantTy::new("bool").ok(), &(meters_clone.borrow().remember_position).to_variant());
+			remember_position.connect_activate(move |s, _| s.set_state(&meters_clone.borrow_mut().toggle_remember_position().to_variant()));
+			actions.add_action(&remember_position);
+
+			let meters_clone = meters.clone();
+			let show_visualizers = gio::SimpleAction::new_stateful("show_visualizers", glib::VariantTy::new("bool").ok(), &(meters_clone.borrow().show_visualizers).to_variant());
 			show_visualizers.connect_activate(move |s, _| s.set_state(&meters_clone.borrow_mut().toggle_visualizers().to_variant()));
 			actions.add_action(&show_visualizers);
 		}
 
 		Self {
+			window,
 			pulse: pulse.clone(),
 			meters,
 			profiles
@@ -293,7 +398,7 @@ impl Myxer {
 				meters.source.widget.get_margin_bottom() - meters.source_outputs_box.get_allocation().height;
 			if offset != meters.source.widget.get_margin_bottom() { meters.source.widget.set_margin_bottom(offset) }
 
-			
+
 			let show = meters.show_visualizers;
 			let separate = meters.separate_channels;
 
@@ -329,7 +434,7 @@ impl Myxer {
 
 			for (index, output) in &pulse.source_outputs {
 				let source_outputs_box = meters.source_outputs_box.clone();
-				
+
 				let meter = meters.source_outputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));
 				if meter.widget.get_parent().is_none() { source_outputs_box.pack_start(&meter.widget, false, false, 0); }
 				meter.set_data(&output.data);
@@ -346,6 +451,12 @@ impl Myxer {
 
 			meters.sink_inputs_box.show_all();
 			meters.source_outputs_box.show_all();
+
+
+			if meters.window_position != self.window.get_position() {
+				meters.window_position = self.window.get_position();
+				let _ = meters.save_config();
+			}
 		}
 	}
 }
