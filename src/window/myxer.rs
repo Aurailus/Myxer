@@ -404,8 +404,16 @@ impl Myxer {
 
 			if let Some(sink) = pulse.sinks.get(&pulse.active_sink) {
 				meters.sink.set_data(&sink.data);
+
+				// refresh the peaks if they have changed OR if the split channels setting has changed
+				let peak = if show { Some(sink.peak) } else { None };
+				let refresh_peaks = (meters.sink.peak != peak) || (meters.sink.split != separate && show);
+
 				meters.sink.split_channels(separate);
-				meters.sink.set_peak(if show { Some(sink.peak) } else { None });
+
+				if refresh_peaks {
+					meters.sink.set_peak(peak);
+				}
 			}
 
 			const DECREASE: u32 = 2000;
@@ -417,19 +425,26 @@ impl Myxer {
 				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));
 				if meter.widget.get_parent().is_none() { sink_inputs_box.pack_start(&meter.widget, false, false, 0); }
 
-				if input.peak != 0 && meter.peak.is_some() && meter.peak.unwrap() != 0 && input.peak == meter.peak.unwrap() {
+				// gradually decrease the peak value if it is not changing
+				if input.peak != 0 && Some(input.peak) == meter.peak {
 					if input.repetitions < REPETITIONS { input.repetitions += 1; }
 					else {
-						println!("Decreasing...");
 						if input.peak < DECREASE { input.peak = 0; }
 						else { input.peak -= DECREASE; }
 					}
 				}
 				else { input.repetitions = 0; }
 
+				// refresh the peaks if they have changed OR if the split channels setting has changed
+				let peak = if show { Some(input.peak) } else { None };
+				let refresh_peaks = (meter.peak != peak) || (meter.split != separate && show);
+
 				meter.set_data(&input.data);
 				meter.split_channels(separate);
-				meter.set_peak(if show { Some(input.peak) } else { None });
+
+				if refresh_peaks {
+					meter.set_peak(peak);
+				}
 			}
 
 			let sink_inputs_box = meters.sink_inputs_box.clone();
