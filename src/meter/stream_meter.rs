@@ -24,7 +24,7 @@ pub struct StreamMeter {
 	pulse: Shared<Pulse>,
 
 	split: bool,
-	peak: Option<u32>,
+	pub peak: Option<u32>,
 
 	b_id: Option<glib::signal::SignalHandlerId>,
 }

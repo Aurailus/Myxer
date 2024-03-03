@@ -385,7 +385,7 @@ impl Myxer {
 		if kill { self.profiles.replace(None); }
 
 		if self.pulse.borrow_mut().update() {
-			let pulse = self.pulse.borrow();
+			let mut pulse = self.pulse.borrow_mut();
 
 			let mut meters = self.meters.borrow_mut();
 
@@ -408,11 +408,25 @@ impl Myxer {
 				meters.sink.set_peak(if show { Some(sink.peak) } else { None });
 			}
 
-			for (index, input) in &pulse.sink_inputs {
+			const DECREASE: u32 = 2000;
+			const REPETITIONS: u32 = 3;
+
+			for (index, input) in &mut pulse.sink_inputs {
 				let sink_inputs_box = meters.sink_inputs_box.clone();
 
 				let meter = meters.sink_inputs.entry(*index).or_insert_with(|| StreamMeter::new(self.pulse.clone()));
 				if meter.widget.get_parent().is_none() { sink_inputs_box.pack_start(&meter.widget, false, false, 0); }
+
+				if input.peak != 0 && meter.peak.is_some() && meter.peak.unwrap() != 0 && input.peak == meter.peak.unwrap() {
+					if input.repetitions < REPETITIONS { input.repetitions += 1; }
+					else {
+						println!("Decreasing...");
+						if input.peak < DECREASE { input.peak = 0; }
+						else { input.peak -= DECREASE; }
+					}
+				}
+				else { input.repetitions = 0; }
+
 				meter.set_data(&input.data);
 				meter.split_channels(separate);
 				meter.set_peak(if show { Some(input.peak) } else { None });
