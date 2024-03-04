@@ -20,6 +20,7 @@ pub fn about() {
 	about.set_copyright(Some("© 2021 Auri Collings"));
 	about.set_license_type(gtk::License::Gpl30);
 	about.add_credit_section("Created by", &[ "Auri Collings" ]);
+	about.add_credit_section("With the help of", &[ "zWolfrost" ]);
 	about.add_credit_section("libpulse-binding by", &[ "Lyndon Brown" ]);
 
 	about.connect_response(|about, _| about.close());
