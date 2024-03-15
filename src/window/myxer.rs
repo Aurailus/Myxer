@@ -481,7 +481,7 @@ impl Myxer {
 			meters.source_outputs_box.show_all();
 
 
-			if meters.window_position != self.window.get_position() {
+			if meters.window_position != self.window.get_position() && self.window.get_focus().is_some() {
 				meters.window_position = self.window.get_position();
 				let _ = meters.save_config();
 			}
