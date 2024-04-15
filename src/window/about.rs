@@ -16,7 +16,7 @@ pub fn about() {
 	about.set_program_name("Myxer");
 	about.set_version(Some("1.2.1"));
 	about.set_comments(Some("A modern Volume Mixer for PulseAudio."));
-	about.set_website(Some("https://myxer.aurailus.com"));
+	about.set_website(Some("https://github.com/Aurailus/Myxer"));
 	about.set_copyright(Some("© 2021 Auri Collings"));
 	about.set_license_type(gtk::License::Gpl30);
 	about.add_credit_section("Created by", &[ "Auri Collings" ]);
