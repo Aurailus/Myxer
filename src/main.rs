@@ -29,7 +29,7 @@ use shared::Shared;
 
 fn main() {
 	let pulse = Shared::new(Pulse::new());
-	
+
 	let app = gtk::Application::new(Some("com.aurailus.myxer"), Default::default())
 		.expect("Failed to initialize GTK application.");
 

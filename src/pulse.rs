@@ -76,6 +76,7 @@ pub struct StreamData {
 	pub data: MeterData,
 
 	pub peak: u32,
+	pub repetitions: u32,
 	pub monitor_index: u32,
 	pub monitor: Shared<Stream>
 }
@@ -599,7 +600,7 @@ impl Pulse {
 		else {
 			let source_str = stream.monitor_index.to_string();
 			let monitor = self.create_monitor_stream(t, if t == StreamType::SinkInput { None } else { Some(&source_str) }, index);
-			let data = StreamData { data, peak: 0, monitor, monitor_index: stream.monitor_index };
+			let data = StreamData { data, peak: 0, repetitions: 0, monitor, monitor_index: stream.monitor_index };
 			match t {
 				StreamType::Sink => self.sinks.insert(index, data),
 				StreamType::SinkInput => self.sink_inputs.insert(index, data),

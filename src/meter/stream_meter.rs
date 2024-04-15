@@ -23,8 +23,8 @@ pub struct StreamMeter {
 	widgets: MeterWidgets,
 	pulse: Shared<Pulse>,
 
-	split: bool,
-	peak: Option<u32>,
+	pub split: bool,
+	pub peak: Option<u32>,
 
 	b_id: Option<glib::signal::SignalHandlerId>,
 }
@@ -151,24 +151,22 @@ impl Meter for StreamMeter {
 	}
 
 	fn set_peak(&mut self, peak: Option<u32>) {
-		if self.peak != peak {
-			self.peak = peak;
+		self.peak = peak;
 
-			if self.peak.is_some() {
-				for (i, s) in self.widgets.scales_inner.get_children().iter().enumerate() {
-					let s = s.clone().downcast::<gtk::Scale>().expect("Scales box has non-scale children.");
-					let peak_scaled = self.peak.unwrap() as f64 * (self.data.volume.get()[i].0 as f64 / MAX_SCALE_VOL as f64);
-					s.set_fill_level(peak_scaled as f64);
-					s.set_show_fill_level(!self.data.muted && peak_scaled > 0.5);
-					s.get_style_context().add_class("visualizer");
-				}
+		if self.peak.is_some() {
+			for (i, s) in self.widgets.scales_inner.get_children().iter().enumerate() {
+				let s = s.clone().downcast::<gtk::Scale>().expect("Scales box has non-scale children.");
+				let peak_scaled = self.peak.unwrap() as f64 * (self.data.volume.get()[i].0 as f64 / MAX_SCALE_VOL as f64);
+				s.set_fill_level(peak_scaled as f64);
+				s.set_show_fill_level(!self.data.muted && peak_scaled > 0.5);
+				s.get_style_context().add_class("visualizer");
 			}
-			else {
-				for s in &self.widgets.scales_inner.get_children() {
-					let s = s.clone().downcast::<gtk::Scale>().expect("Scales box has non-scale children.");
-					s.set_show_fill_level(false);
-					s.get_style_context().remove_class("visualizer");
-				}
+		}
+		else {
+			for s in &self.widgets.scales_inner.get_children() {
+				let s = s.clone().downcast::<gtk::Scale>().expect("Scales box has non-scale children.");
+				s.set_show_fill_level(false);
+				s.get_style_context().remove_class("visualizer");
 			}
 		}
 	}
