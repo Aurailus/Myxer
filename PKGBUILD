@@ -1,6 +1,6 @@
 pkgname=myxer
 _pkgname=Myxer
-pkgver=1.2.1
+pkgver=1.3.0
 pkgrel=1
 pkgdesc='A modern Volume Mixer for PulseAudio, built with you in mind.'
 url='https://github.com/Aurailus/Myxer'
