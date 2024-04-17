@@ -67,7 +67,7 @@ impl StreamMeter {
 
 		if self.b_id.is_some() { self.widgets.status.disconnect(glib::signal::SignalHandlerId::from_glib(self.b_id.as_ref().unwrap().to_glib())) }
 		self.b_id = Some(self.widgets.status.connect_clicked(move |status| {
-			pulse.borrow_mut().set_muted(t, index, !status.get_style_context().has_class("muted"));
+			pulse.borrow_mut().set_muted(t, index, !status.get_style_context().has_class("muted"), true);
 		}));
 	}
 
