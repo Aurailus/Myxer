@@ -69,7 +69,7 @@ impl SinkMeter {
 		if self.s_id.is_some() { self.widgets.status.disconnect(glib::signal::SignalHandlerId::from_glib(self.s_id.as_ref().unwrap().to_glib())) }
 		self.s_id = Some(self.widgets.status.connect_clicked(move |status| {
 			pulse.borrow_mut().set_muted(t, index,
-				!status.get_style_context().has_class("muted"));
+				!status.get_style_context().has_class("muted"), true);
 		}));
 
 		let pulse = self.pulse.clone();
