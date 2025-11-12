@@ -290,9 +290,9 @@ impl Pulse {
 	 * * `mute`  - Whether the stream should be muted or not.
 	 */
 
-	pub fn set_muted(&self, t: StreamType, index: u32, mute: bool) {
+	pub fn set_muted(&self, t: StreamType, index: u32, mute: bool, zero_volume_reset: bool) {
 		// If unmuting a stream that has been set to 0 volume, it should be reset to full.
-		if !mute {
+		if !mute && zero_volume_reset {
 			let entry = match t {
 				StreamType::Sink => self.sinks.get(&index),
 				StreamType::SinkInput => self.sink_inputs.get(&index),
