@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::sync::mpsc::{ channel, Sender, Receiver };
 
 use super::shared::Shared;
+use crate::pulse_names::resolve_default_index;
 use super::card::CardData;
 use super::meter::MeterData;
 use super::meter::MAX_NATURAL_VOL;
@@ -46,7 +47,7 @@ impl Default for StreamType {
  */
 
 enum TxMessage {
-	Default(String, String),
+	Default(Option<String>, Option<String>),
 	StreamUpdate(StreamType, TxStreamData),
 	StreamRemove(StreamType, u32),
 	CardUpdate(CardData),
@@ -351,8 +352,10 @@ impl Pulse {
 	fn subscribe(&mut self) {
 		/** Updates the client when the server information changes. */
 		fn tx_server(tx: &Sender<TxMessage>, item: &ServerInfo<'_>) {
-			tx.send(TxMessage::Default(item.default_sink_name.clone().unwrap().into_owned(),
-				item.default_source_name.clone().unwrap().into_owned())).unwrap();
+			tx.send(TxMessage::Default(
+				item.default_sink_name.clone().map(|name| name.into_owned()),
+				item.default_source_name.clone().map(|name| name.into_owned())
+			)).unwrap();
 		};
 
 		/** Updates the client when a sink changes. */
@@ -558,22 +561,14 @@ impl Pulse {
 	 * * `source` - The default source.
 	 */
 
-	fn update_default(&mut self, sink: String, source: String) {
-		for (i, v) in &self.sinks {
-			if v.data.name == sink {
-				self.default_sink = *i;
-				self.active_sink = *i;
-				break;
-			}
-		}
+	fn update_default(&mut self, sink: Option<String>, source: Option<String>) {
+		self.default_sink = resolve_default_index(sink.as_deref(), self.sinks.iter().map(|(i, stream)| (*i, stream.data.name.as_str())))
+			.unwrap_or(u32::MAX);
+		self.default_source = resolve_default_index(source.as_deref(), self.sources.iter().map(|(i, stream)| (*i, stream.data.name.as_str())))
+			.unwrap_or(u32::MAX);
 
-		for (i, v) in &self.sources {
-			if v.data.name == source {
-				self.default_source = *i;
-				self.active_source = *i;
-				break;
-			}
-		}
+		if self.default_sink != u32::MAX { self.active_sink = self.default_sink; }
+		if self.default_source != u32::MAX { self.active_source = self.default_source; }
 	}
 
 

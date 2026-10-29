@@ -10,6 +10,7 @@ use gio::prelude::*;
 mod card;
 mod meter;
 mod pulse;
+mod pulse_names;
 mod window;
 mod shared;
 
